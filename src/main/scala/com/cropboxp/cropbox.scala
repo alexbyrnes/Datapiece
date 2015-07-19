@@ -28,9 +28,10 @@ object cropbox extends App {
 
   case class Box(x1: Int, y1: Int, x2: Int, y2: Int)
 
-  case class Config(percentOfWindow: Double = 0.0, ratio: Double = 1.0, json: String = "", infile: String = "", outfile: String = "", dpi: Int = 72, sourceDpi: Int = 72, buf: Int = 10, minBlobSize: Int = 2000, border: Int = 2, threshold: Int = 128, kwargs: Map[String,String] = Map())
+  case class Config(percentOfWindow: Double = 0.0, ratio: Double = 1.0, json: String = "", infile: String = "", outfile: String = "", dpi: Int = 72, sourceDpi: Int = 72, buf: Int = 10, minBlobSize: Int = 2000, border: Int = 2, threshold: Int = 128, split: Boolean = false, kwargs: Map[String,String] = Map())
 
   val parser = new scopt.OptionParser[Config]("lineup") {
+    override def showUsageOnError = true
     head("lineup", "0.1")
     opt[Double]('p', "percentOfWindow") action { (x, c) =>
       c.copy(percentOfWindow = x) } text("Approximate percent of the total image area taken up by the target box. Use for processing one box per image.")
@@ -54,6 +55,9 @@ object cropbox extends App {
       c.copy(sourceDpi = x) } text("DPI of JSON. Default is 72. If your bounding box JSON is in points (pts) from a standard PDF, leave this blank.")
     opt[Int]('t', "threshold") action { (x, c) =>
       c.copy(threshold = x) } text("Threshold for binarization. Default is 128 (Gray halfway between white and black).")
+    opt[Unit]('S', "split") action { (x, c) =>
+      c.copy(split = true) } text("Split images into separate files. Uses prefix specified by the outfile option. Example: -S -o /tmp/out will produce /tmp/out0.png, /tmp/out1.png etc...")
+
 }
 
   parser.parse(args, Config()) match {
@@ -80,30 +84,31 @@ object cropbox extends App {
     var matConcat = new Mat(maxHeight, totalWidth, image.`type`(), new Scalar(255,255,255))
     var cursor = 0 
 
-    var i = 0
-    for (x <- cropped) {
-      //if (config.split) {
-      if (true) {
-        println(config.outfile + i + ".png")
-        println(x.rows)
-        println(x.cols)
-        Imgcodecs.imwrite(config.outfile + i + ".png", x)
-        i += 1
+    if (config.split) {
+      var i = 0
+      for (c <- cropped) {
+          Imgcodecs.imwrite(config.outfile + i + ".png", c)
+          i += 1
+      }
+
+    } else {
+
+      for (c <- cropped) {
+        val submat = matConcat.submat(0, c.rows, cursor, cursor+c.cols)
+        c.copyTo(submat)
+        cursor += c.cols
+      }
+
+      if (config.outfile != "") {
+        Imgcodecs.imwrite(config.outfile, matConcat)
       } else {
-        val submat = matConcat.submat(0, x.rows, cursor, cursor+x.cols)
-        x.copyTo(submat)
-        cursor += x.cols
+        val matBufout = new MatOfByte() 
+        Imgcodecs.imencode(".png", matConcat, matBufout)
+        val bufout : Array[Byte] = matBufout.toArray()
+        IOUtils.write(bufout, System.out)
       }
     }
 
-    if (config.outfile != "") {
-      Imgcodecs.imwrite(config.outfile, matConcat)
-    } else {
-      val matBufout = new MatOfByte() 
-      Imgcodecs.imencode(".png", matConcat, matBufout)
-      val bufout : Array[Byte] = matBufout.toArray()
-      IOUtils.write(bufout, System.out)
-    }
   }
 
   def readImage(filename: String): Mat = {
