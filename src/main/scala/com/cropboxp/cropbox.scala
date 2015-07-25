@@ -26,7 +26,7 @@ import scala.collection.mutable.ListBuffer
 
 object cropbox extends App {
 
-  case class Box(x1: Int, y1: Int, x2: Int, y2: Int)
+  case class Box(x1: Int, y1: Int, x2: Int, y2: Int, name: String = "", exact: Boolean = false)
 
   case class Config(percentOfWindow: Double = 0.0, ratio: Double = 1.0, json: String = "", infile: String = "", outfile: String = "", dpi: Int = 72, sourceDpi: Int = 72, buf: Int = 10, minBlobSize: Int = 2000, border: Int = 2, threshold: Int = 128, split: Boolean = false, kwargs: Map[String,String] = Map())
 
@@ -73,10 +73,10 @@ object cropbox extends App {
 
     val json = Source.fromFile(config.json).mkString 
     val boxes = mapJSON(json)
-     
+
     val image: Mat = threshold(readImage(config.infile), config.threshold)
-    val t = (config.dpi/config.sourceDpi.toDouble).toInt
-    val cropped = boxes.map(b => crop(image.submat(t*(b.y1-buf), t*(b.y2+buf), t*(b.x1-buf), t*(b.x2+buf)), boxToRP(b, buf)._1, boxToRP(b, buf)._2, config.minBlobSize, config.border))
+    val scale = (config.dpi/config.sourceDpi.toDouble).toInt
+    val cropped = boxes.map(b => processBox(image, b, buf, scale, config))
 
     val totalWidth = cropped.map((m:Mat) => m.cols).sum
     val maxHeight = cropped.map((m:Mat) => m.rows).reduce(Math.max)
@@ -86,8 +86,15 @@ object cropbox extends App {
 
     if (config.split) {
       var i = 0
+      var fname = ""
+
       for (c <- cropped) {
-          Imgcodecs.imwrite(config.outfile + i + ".png", c)
+          if (boxes(i).name != "")
+            fname = config.outfile + boxes(i).name
+          else
+            fname = config.outfile + i
+        
+          Imgcodecs.imwrite(fname + ".png", c)
           i += 1
       }
 
@@ -155,10 +162,26 @@ object cropbox extends App {
     parse(json).extract[List[Box]]
 
   }
+ 
+  def processBox(image: Mat, b: Box, buffer: Int, scale: Int, config: Config): Mat = { 
 
-  def crop(image: Mat, ratio: Double, percentOfWindow: Double, minBlobSize: Int = 2000, border: Int = 2): Mat = { 
+    if (b.exact) {
+      return image.submat(scale*b.y1, scale*b.y2, scale*b.x1, scale*b.x2)
+    }
 
-    // Indices of location/dimensions
+    val x1Large = scale*(b.x1-buffer)
+    val y1Large = scale*(b.y1-buffer)
+    val x2Large = scale*(b.x2+buffer)
+    val y2Large = scale*(b.y2+buffer)
+    val areaOfInterest = image.submat(y1Large, y2Large, x1Large, x2Large)
+    val (ratio, percent) = boxToRP(b, buffer)
+
+    findAndCrop(areaOfInterest, ratio, percent, config.minBlobSize, config.border)
+  }
+
+  def findAndCrop(image: Mat, ratio: Double, percentOfWindow: Double, minBlobSize: Int = 2000, border: Int = 2): Mat = { 
+
+    // Array index constants
     val minXi = 0
     val minYi = 1
     val width = 2
