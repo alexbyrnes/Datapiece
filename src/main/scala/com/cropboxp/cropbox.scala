@@ -19,10 +19,17 @@ import org.apache.commons.io.IOUtils
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import scala.io.Source
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
+
+import java.nio.file.{Paths, Files}
+import java.nio.charset.StandardCharsets
+
+import java.io.StringWriter
+
 
 object cropbox extends App {
 
@@ -76,7 +83,30 @@ object cropbox extends App {
 
     val image: Mat = threshold(readImage(config.infile), config.threshold)
     val scale = (config.dpi/config.sourceDpi.toDouble).toInt
+
+    //if (config.jsonOut != "") {
+    if (true) {
+      val croppedJSON: java.util.List[Box] = boxes.map(b => processBoxFindOnly(image, b, buf, scale, config))
+
+      //val writer = new StringWriter()
+
+      mapper.registerModule(DefaultScalaModule)
+
+      //mapper.writeValue(writer, croppedJSON)
+
+      val out = new java.io.FileWriter("jsonout.json")
+      out.write(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(croppedJSON))
+      out.close
+
+      //if (config.findOnly) 
+      if (true) 
+        return
+
+    } 
+
+    
     val cropped = boxes.map(b => processBox(image, b, buf, scale, config))
+    
 
     val totalWidth = cropped.map((m:Mat) => m.cols).sum
     val maxHeight = cropped.map((m:Mat) => m.rows).reduce(Math.max)
@@ -85,10 +115,14 @@ object cropbox extends App {
     var cursor = 0 
 
     if (config.split) {
+      // Save each box to separate image
       var i = 0
       var fname = ""
 
       for (c <- cropped) {
+
+          // File names for named boxes,
+          // integer for unnamed
           if (boxes(i).name != "")
             fname = config.outfile + boxes(i).name
           else
@@ -100,12 +134,15 @@ object cropbox extends App {
 
     } else {
 
+      // Put boxes in one image
       for (c <- cropped) {
         val submat = matConcat.submat(0, c.rows, cursor, cursor+c.cols)
         c.copyTo(submat)
         cursor += c.cols
       }
 
+      // If there's an output file name,
+      // used it, otherwise print to stdout
       if (config.outfile != "") {
         Imgcodecs.imwrite(config.outfile, matConcat)
       } else {
@@ -162,7 +199,25 @@ object cropbox extends App {
     parse(json).extract[List[Box]]
 
   }
- 
+
+  def processBoxFindOnly(image: Mat, b: Box, buffer: Int, scale: Int, config: Config): Box = { 
+
+    if (b.exact) {
+      return Box(scale*b.x1, scale*b.y1, scale*b.x2, scale*b.y2, b.name, b.exact)
+    }
+
+    val x1Large = scale*(b.x1-buffer)
+    val y1Large = scale*(b.y1-buffer)
+    val x2Large = scale*(b.x2+buffer)
+    val y2Large = scale*(b.y2+buffer)
+    val areaOfInterest = image.submat(y1Large, y2Large, x1Large, x2Large)
+    val (ratio, percent) = boxToRP(b, buffer)
+
+    val cb = findAndCrop(areaOfInterest, ratio, percent, config.minBlobSize, config.border)
+    Box(cb.x1, cb.y1, cb.x2, cb.y2, b.name, b.exact)
+  }
+
+
   def processBox(image: Mat, b: Box, buffer: Int, scale: Int, config: Config): Mat = { 
 
     if (b.exact) {
@@ -176,10 +231,12 @@ object cropbox extends App {
     val areaOfInterest = image.submat(y1Large, y2Large, x1Large, x2Large)
     val (ratio, percent) = boxToRP(b, buffer)
 
-    findAndCrop(areaOfInterest, ratio, percent, config.minBlobSize, config.border)
+    val cb = findAndCrop(areaOfInterest, ratio, percent, config.minBlobSize, config.border)
+    image.submat(cb.y1, cb.y2, cb.x1, cb.x2)
+
   }
 
-  def findAndCrop(image: Mat, ratio: Double, percentOfWindow: Double, minBlobSize: Int = 2000, border: Int = 2): Mat = { 
+  def findAndCrop(image: Mat, ratio: Double, percentOfWindow: Double, minBlobSize: Int = 2000, border: Int = 2): Box = { 
 
     // Array index constants
     val minXi = 0
@@ -234,14 +291,12 @@ object cropbox extends App {
 
     val b = blobs(b_index)
 
-    var minx = minX(b).toInt + border
-    var miny = minY(b).toInt + border
-    var maxx = maxX(b).toInt - border
-    var maxy = maxY(b).toInt - border
-
-    val cropped = image.submat(miny, maxy, minx, maxx)
-
-    cropped      
+    val x1 = minX(b).toInt + border
+    val y1 = minY(b).toInt + border
+    val x2 = maxX(b).toInt - border
+    val y2 = maxY(b).toInt - border
+    
+    Box(x1, y1, x2, y2) 
   }  
 }
 
