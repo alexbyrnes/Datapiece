@@ -25,17 +25,8 @@ import scala.io.Source
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
-import java.nio.file.{Paths, Files}
-import java.nio.charset.StandardCharsets
-
-import java.io.StringWriter
-
 
 object cropbox extends App {
-
-  case class Box(x1: Int, y1: Int, x2: Int, y2: Int, name: String = "", exact: Boolean = false)
-
-  case class Config(percentOfWindow: Double = 0.0, ratio: Double = 1.0, json: String = "", infile: String = "", outfile: String = "", dpi: Int = 72, sourceDpi: Int = 72, buf: Int = 10, minBlobSize: Int = 2000, border: Int = 2, threshold: Int = 128, split: Boolean = false, kwargs: Map[String,String] = Map())
 
   val parser = new scopt.OptionParser[Config]("lineup") {
     override def showUsageOnError = true
@@ -50,7 +41,7 @@ object cropbox extends App {
       c.copy(infile = x) } optional() text("Image input file.")
     opt[String]('o', "outfile") action { (x, c) =>
       c.copy(outfile = x) } text("Image output file.")
-    opt[Int]('f', "buffer") action { (x, c) =>
+    opt[Int]('R', "buffer") action { (x, c) =>
       c.copy(buf = x) } text("Buffer around the target boxes. Default: 10 pts (or pixels if bounding boxes are in pixels. See dpi and sourcedpi.) Should be large enough to account for shift, skew, enlargement of target boxes but small enough not to include other boxes on the page. Overlap with bounding boxes in the JSON is OK.")
     opt[Int]('m', "minblobsize") action { (x, c) =>
       c.copy(minBlobSize = x) } text("Minimum area in pixels of connected components. Default: 2000. Eliminates very small enclosed areas from search space.")
@@ -64,6 +55,10 @@ object cropbox extends App {
       c.copy(threshold = x) } text("Threshold for binarization. Default is 128 (Gray halfway between white and black).")
     opt[Unit]('S', "split") action { (x, c) =>
       c.copy(split = true) } text("Split images into separate files. Uses prefix specified by the outfile option. Example: -S -o /tmp/out will produce /tmp/out0.png, /tmp/out1.png etc...")
+    opt[String]('j', "jsonout") action { (x, c) =>
+      c.copy(jsonOut = x) } text("Filename for boxes found (JSON).  If used with --findonly flag, no images will be produced.")
+    opt[Unit]('f', "findonly") action { (x, c) =>
+      c.copy(findOnly = true) } text("Find boxes only. Filename for JSON output required.")
 
 }
 
@@ -84,35 +79,28 @@ object cropbox extends App {
     val image: Mat = threshold(readImage(config.infile), config.threshold)
     val scale = (config.dpi/config.sourceDpi.toDouble).toInt
 
-    //if (config.jsonOut != "") {
-    if (true) {
+    if (config.jsonOut != "") {
       val croppedJSON: java.util.List[Box] = boxes.map(b => processBoxFindOnly(image, b, buf, scale, config))
-
-      //val writer = new StringWriter()
 
       mapper.registerModule(DefaultScalaModule)
 
-      //mapper.writeValue(writer, croppedJSON)
+      val out = new java.io.FileWriter(config.jsonOut)
+      val prettyPrinter = mapper.writerWithDefaultPrettyPrinter()
 
-      val out = new java.io.FileWriter("jsonout.json")
-      out.write(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(croppedJSON))
+      out.write(prettyPrinter.writeValueAsString(croppedJSON))
       out.close
 
-      //if (config.findOnly) 
-      if (true) 
+      if (config.findOnly) 
         return
 
     } 
 
     
     val cropped = boxes.map(b => processBox(image, b, buf, scale, config))
-    
 
     val totalWidth = cropped.map((m:Mat) => m.cols).sum
     val maxHeight = cropped.map((m:Mat) => m.rows).reduce(Math.max)
 
-    var matConcat = new Mat(maxHeight, totalWidth, image.`type`(), new Scalar(255,255,255))
-    var cursor = 0 
 
     if (config.split) {
       // Save each box to separate image
@@ -134,7 +122,9 @@ object cropbox extends App {
 
     } else {
 
+      var matConcat = new Mat(maxHeight, totalWidth, image.`type`(), new Scalar(255,255,255))
       // Put boxes in one image
+      var cursor = 0 
       for (c <- cropped) {
         val submat = matConcat.submat(0, c.rows, cursor, cursor+c.cols)
         c.copyTo(submat)
@@ -148,7 +138,7 @@ object cropbox extends App {
       } else {
         val matBufout = new MatOfByte() 
         Imgcodecs.imencode(".png", matConcat, matBufout)
-        val bufout : Array[Byte] = matBufout.toArray()
+        val bufout: Array[Byte] = matBufout.toArray()
         IOUtils.write(bufout, System.out)
       }
     }
