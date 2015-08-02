@@ -29,9 +29,9 @@ import scala.collection.mutable.ListBuffer
 object Datapiece extends App {
 
 
-  val parser = new scopt.OptionParser[Config]("lineup") {
+  val parser = new scopt.OptionParser[Config]("datapiece") {
     override def showUsageOnError = true
-    head("lineup", "0.1")
+    head("Datapiece", "0.1")
     opt[Double]('p', "percentOfWindow") action { (x, c) =>
       c.copy(percentOfWindow = x) } text("Approximate percent of the total image area taken up by the target box. Use for processing one box per image.")
     opt[Double]('r', "ratio") action { (x, c) =>
