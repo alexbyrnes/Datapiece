@@ -1,12 +1,8 @@
-//import com.github.retronym.SbtOneJar._
-
-name := "Piece"
+name := "Datapiece"
 
 version := "0.1"
 
 scalaVersion := "2.11.4"
-
-//oneJarSettings
 
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.2.10"
 
