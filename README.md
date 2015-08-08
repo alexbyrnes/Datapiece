@@ -37,7 +37,7 @@ The input bounding boxes is a JSON list of objects:
 
 Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of the upper left and lower right corners of the bounding box, not the upper left coordinate and the height/width.  Some graphics programs will give coordinates with height/width.  Also note the coordinates are in points for compatibility with Tabula and other PDF applications.  To get an input image for Datapiece you need to convert a PDF to PNG format *at a particular resolution*.  For OCR this generally needs to be pretty high like 300 dots per inch.  If you convert your PDF using 300 DPI, put 300 as the dpi parameter to Datapiece and everything should work out fine.  The numbers you get from Tabula or another PDF program from the original PDF will be translated to pixels in the .png file.  If you got your bounding boxes from the input PNG, just leave --dpi out.
 
-See boxes_contract.json and "Tabula Integration" below for more information on generating bounding boxes.
+See boxes_contract.json and "Integration with Tabula" below for more information on generating bounding boxes.
 
 
 ### Examples
