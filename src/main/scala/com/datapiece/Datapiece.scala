@@ -1,6 +1,7 @@
 package com.datapiece
 
 import java.awt.image.BufferedImage
+import java.awt.image.DataBufferByte
 import javax.imageio.ImageIO
 import java.io.{ InputStreamReader, InputStream }
 import org.apache.commons.io.IOUtils
@@ -13,6 +14,8 @@ import scala.io.Source
 import scala.collection.mutable.ListBuffer
 
 import java.io.File
+
+import ammonite.repl.Repl._
 
 object Datapiece extends App {
 
@@ -76,13 +79,51 @@ object Datapiece extends App {
 
     val json = Source.fromFile(config.json).mkString
     val boxes = mapJSON(json)
-
+    //----
+    /*
+    val boxes = List(
+      Box(name = "contract_dates", x1 = 305, y1 = 105, x2 = 403, y2 = 129),
+      Box(name = "station", x1 = 403, y1 = 180, x2 = 454, y2 = 204),
+      Box(name = "billing_calendar", x1 = 455, y1 = 154, x2 = 534, y2 = 179),
+      Box(name = "billing_cycle", x1 = 403, y1 = 154, x2 = 454, y2 = 179),
+      Box(name = "product", x1 = 304, y1 = 80, x2 = 593, y2 = 105),
+      Box(name = "demographic", x1 = 403, y1 = 229, x2 = 591, y2 = 254),
+      Box(name = "advertiser", x1 = 304, y1 = 130, x2 = 479, y2 = 155),
+      Box(name = "contract_revision", x1 = 403, y1 = 52, x2 = 493, y2 = 80),
+      Box(name = "special_handling", x1 = 403, y1 = 204, x2 = 591, y2 = 229),
+      Box(name = "advertiser_code", x1 = 455, y1 = 279, x2 = 533, y2 = 303),
+      Box(name = "alt_order_no", x1 = 493, y1 = 52, x2 = 592, y2 = 80),
+      Box(name = "estimate_no", x1 = 403, y1 = 105, x2 = 492, y2 = 130),
+      Box(name = "advertiser_address", x1 = 61, y1 = 153, x2 = 274, y2 = 265, exact = true)
+    )
+    */
+    //--------
     val scale = config.dpi / config.sourceDpi.toDouble
 
-    val minX = boxes.map(_.x1).min - buf
-    val minY = boxes.map(_.y1).min - buf
-    val maxX = boxes.map(_.x2).max + buf
-    val maxY = boxes.map(_.y2).max + buf
+    val bufferedImage = ImageIO.read(new File(config.infile))
+    val w = bufferedImage.getWidth
+    val h = bufferedImage.getHeight
+
+    /*val minBox = Box(boxes.map(_.x1).min, boxes.map(_.y1).min, boxes.map(_.x2).max, boxes.map(_.y2).max)
+
+    var (x1buf, y1buf, x2buf, y2buf) = (buf, buf, buf, buf)
+
+    if (minBox.x1 - x1buf < 0)
+      x1buf = minBox.x1
+
+    if (minBox.y1 - y1buf < 0)
+      y1buf = minBox.y1
+
+    if (minBox.x2 + x2buf > w)
+      x2buf = w - minBox.x2
+
+    if (minBox.y2 + y2buf > h)
+      y2buf = h - minBox.y2
+
+    val minX = minBox.x1 - x1buf
+    val minY = minBox.y1 - y1buf
+    val maxX = minBox.x2 + x2buf
+    val maxY = minBox.y2 + y2buf
 
     val minXscale = (minX * scale).toInt
     val minYscale = (minY * scale).toInt
@@ -91,15 +132,50 @@ object Datapiece extends App {
 
     val boxesSubimage = boxes.map(b => Box(b.x1 - minX, b.y1 - minY, b.x2 - minX, b.y2 - minY, b.name, b.exact))
 
-    val bufferedImage = ImageIO.read(new File(config.infile))
+    println("original boxes")
+    //debug("boxes" -> boxes, "boxesSubimage" -> boxesSubimage)
+
     val subImage = bufferedImage.getSubimage(minXscale, minYscale, maxXscale - minXscale, maxYscale - minYscale)
 
-    val image = toIntArray(subImage, -2)
+    println(s"minXscale $minXscale, minYscale $minYscale, maxXscale $maxXscale, maxYscale: $maxYscale")
+    println(s"w $w, h $h")
+    //val image = toIntArray(subImage, -2)
+
+    println(subImage.getWidth)
+    println(subImage.getHeight)
+*/
+
+    ///---------
+    // Don't translate to subimage
+    val subImage = bufferedImage
+    val boxesSubimage = boxes
+
+    val minXscale = 0
+    val minYscale = 0
+
+    ///-------------
+
+    val bytes = subImage.getRaster().getDataBuffer().asInstanceOf[DataBufferByte].getData()
+
+    var pixelLength = 0
+
+    if (subImage.getAlphaRaster() != null)
+      pixelLength = 4
+    else
+      pixelLength = 3
+
+    val image = new ArrayImage(bytes, subImage.getWidth, pixelLength)
+
+    println("image, bytes")
+    //debug("image" -> image, "bytes" -> bytes, "getWidth" -> subImage.getWidth, "pl" -> pixelLength)
 
     val cropped: List[Box] = boxesSubimage.map(b => processBox(image, b, buf, scale, config))
 
     // translate back to full image
     val croppedFullImage = cropped.map(b => Box(b.x1 + minXscale, b.y1 + minYscale, b.x2 + minXscale, b.y2 + minYscale, b.name, b.exact))
+
+    println("top")
+    //debug("cropped" -> cropped, "croppedFullImage" -> croppedFullImage, "image" -> image, "bytes" -> bytes)
 
     if (config.jsonOut != "")
       saveFoundAsText(croppedFullImage, config.jsonOut)
@@ -174,37 +250,21 @@ object Datapiece extends App {
     val ba = Array.ofDim[Int](w, h)
 
     for (x <- 0 until w; y <- 0 until h) {
-      if (img.getRGB(x, y) > threshold)
-        ba(x)(y) = 1
-      else
-        ba(x)(y) = 0
+      ba(x)(y) = if (img.getRGB(x, y) > threshold) 1 else 0
     }
-
-    // ---------
-    /*val wp = ba.length
-    val hp = ba(0).length
-    //val label = Array.ofDim[Int](ncol, nrow)
-
-    for (xp <- 0 until wp) {
-      for (yp <- 0 until hp) {
-        print(ba(xp)(yp))
-      }
-      println
-    }*/
 
     ba
   }
 
   def writeSubImage(b: Box, image: BufferedImage, fname: String) {
-    if (b.y2 - b.y1 <= 0 || b.x2 - b.x1 <= 0) {
+    if (b.y2 - b.y1 < 0 || b.x2 - b.x1 < 0) {
       println("Image zero or negative size: " + fname)
       return
     }
 
     try {
       //val submatrix = image.submat(c.y1, c.y2, c.x1, c.x2)
-      println(b)
-      val submatrix = image.getSubimage(b.x1, b.y1, b.x2 - b.x1, b.y2 - b.y1)
+      val submatrix = image.getSubimage(b.x1, b.y1, (b.x2 - b.x1) + 1, (b.y2 - b.y1) + 1)
       //Imgcodecs.imwrite(fname + ".png", submatrix)
       ImageIO.write(submatrix, "png", new File(fname + ".png"))
     } catch {
@@ -232,7 +292,7 @@ object Datapiece extends App {
 
   }
 
-  def processBox(image: Array[Array[Int]], b: Box, buffer: Int, scale: Double, config: Config): Box = {
+  def processBox(image: ArrayImage, b: Box, buffer: Int, scale: Double, config: Config): Box = {
 
     if (b.exact) {
       return Box((scale * b.x1).toInt, (scale * b.y1).toInt, (scale * b.x2).toInt, (scale * b.y2).toInt, b.name, b.exact)
@@ -244,28 +304,67 @@ object Datapiece extends App {
     val y2L = (scale * (b.y2 + buffer)).toInt
 
     val (ratio, percent) = boxToRP(b, buffer)
+    val largeBox = Box(x1L, y1L, x2L, y2L)
 
-    println(Box(x1L, y1L, x2L, y2L, b.name))
-    val cb = find(image, Box(x1L, y1L, x2L, y2L), ratio, percent, config.minBlobSize, config.border)
-    println(cb)
+    val cb = find(image, largeBox, ratio, percent, config.minBlobSize, config.border)
+    println("large")
+    //debug("largeBox" -> largeBox, "b" -> b, "cb" -> cb, "x1L" -> x1L)
 
     Box(x1L + cb.x1, y1L + cb.y1, x1L + cb.x2, y1L + cb.y2, b.name, b.exact)
   }
 
-  def find(image: Array[Array[Int]], area: Box, ratio: Double, percentOfWindow: Double, minBlobSize: Int = 2000, border: Int = 2): Box = {
+  def find(image: ArrayImage, area: Box, ratio: Double, percentOfWindow: Double, minBlobSize: Int = 2000, border: Int = 2): Box = {
+    /*
+    val pixelLength = 3
+    var row = 0
+    var col = 0
+
+    for (pixel <- 0 until image.data.length) {
+
+      print(image.data(pixel))
+      print(',')
+
+      col += 1
+
+      if (col == (image.w + 1) * pixelLength) {
+        println
+        col = 0
+        row += 1
+      }
+
+    }
+
+    println("---")
+
+    val h = (image.data.length / 3) / image.w
+
+    println(h)
+    println(image.w)
+
+    for (y <- 0 until h) {
+      for (x <- 0 until image.w) {
+        print(image(x, y))
+      }
+      println
+    }
+
+    println("----------------------")
+    */
 
     var blobs = FeatureDetection.labelImage(image, area)
 
-    //blobs.foreach(println)
+    println("blobs")
+    debug("blobs" -> blobs, "minBlobSize" -> minBlobSize)
 
-    val imsize: Float = image.length * image(0).length
+    val imsize: Float = image.data.length
 
     val sizeOfZeroBased = (x: Box) => ((x.x2 - x.x1) + 1) * ((x.y2 - x.y1) + 1)
     val sizeOf = (x: Box) => (x.x2 - x.x1) * (x.y2 - x.y1)
 
-    blobs = blobs.filter(b => sizeOf(b) > minBlobSize).filter(b => sizeOfZeroBased(b) < sizeOf(area))
+    blobs = blobs.filter(b => sizeOfZeroBased(b) > minBlobSize).filter(b => sizeOfZeroBased(b) < sizeOfZeroBased(area))
 
-    blobs.foreach(println)
+    println("blobs2")
+    debug("blobs" -> blobs)
 
     if (blobs.length == 0)
       return Box(0, 0, 0, 0, "none")
@@ -276,7 +375,7 @@ object Datapiece extends App {
 
     val percent_diffs = percents.map(p => Math.abs(percentOfWindow - p))
 
-    val aratios = blobs.map(b => (b.x2 - b.x1) / (b.y2 - b.y1))
+    val aratios = blobs.map(b => ((b.x2 - b.x1) + 1) / ((b.y2 - b.y1) + 1))
 
     val aratio_diffs = aratios.map(r => Math.abs(r - ratio))
 

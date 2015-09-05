@@ -22,4 +22,7 @@ libraryDependencies += "commons-io" % "commons-io" % "2.4"
 
 libraryDependencies += "com.github.scopt" % "scopt_2.11" % "3.3.0"
 
+libraryDependencies += "com.lihaoyi" % "ammonite-repl" % "0.4.6" cross CrossVersion.full
+
+
 scalariformSettings
