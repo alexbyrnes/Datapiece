@@ -3,6 +3,8 @@ package com.datapiece
 import scala.collection.mutable.Stack
 import scala.collection.mutable.{ Map => MutableMap }
 
+import ammonite.repl.Repl._
+
 object FeatureDetection {
 
   def labelImage(img: ArrayImage, m: Box): List[Box] = {
@@ -22,6 +24,8 @@ object FeatureDetection {
       var ycl = yc - m.y1
 
       if (img(xc, yc) != 0 && label(xcl)(ycl) <= 0) {
+
+        //debug("label" -> label, "img" -> img)
 
         stack.push(Array(xc, yc))
         label(xcl)(ycl) = lab

@@ -22,6 +22,8 @@ import ammonite.repl.Repl._
 
 object Datapiece extends App {
 
+  var s = System.currentTimeMillis
+
   val parser = new scopt.OptionParser[Config]("datapiece") {
     override def showUsageOnError = true
     head("Datapiece", "0.1")
@@ -78,6 +80,10 @@ object Datapiece extends App {
   def run(config: Config) {
     //Thread.sleep(15000)
 
+    val total = System.currentTimeMillis
+
+    time("start")
+
     val buf = config.buf // Brevity
 
     var extension = ""
@@ -110,9 +116,14 @@ object Datapiece extends App {
       throw new Exception("Error: Unrecognized boxes file extension. Must be json or csv.")
     }
 
+    time("setup")
+
     val scale = config.dpi / config.sourceDpi.toDouble
 
     val bufferedImage = ImageIO.read(new File(config.infile))
+
+    time("read image")
+
     val w = bufferedImage.getWidth
     val h = bufferedImage.getHeight
 
@@ -163,8 +174,10 @@ object Datapiece extends App {
 
     ///-------------
 
+    time("before getdata")
     val bytes = subImage.getRaster().getDataBuffer().asInstanceOf[DataBufferByte].getData()
 
+    time("getdata")
     var pixelLength = 0
 
     if (subImage.getAlphaRaster() != null)
@@ -174,7 +187,10 @@ object Datapiece extends App {
 
     val image = new ArrayImage(bytes, subImage.getWidth, pixelLength)
 
+    time("before processBox")
     val cropped: List[Box] = boxesSubimage.map(b => processBox(image, b, buf, scale, config))
+
+    time("processBox")
 
     // translate back to full image
     val croppedFullImage = cropped.map(b => Box(b.x1 + minXscale, b.y1 + minYscale, b.x2 + minXscale, b.y2 + minYscale, b.name, b.exact))
@@ -185,6 +201,7 @@ object Datapiece extends App {
     if (config.findOnly)
       return
 
+    time("before writing")
     if (config.split) {
       // Save each box to separate image
       var i = 0
@@ -201,7 +218,9 @@ object Datapiece extends App {
         writeSubImage(c, bufferedImage, fname)
         i += 1
       }
-
+      time("writing")
+      print("total: ")
+      println(System.currentTimeMillis - total)
     } /*else {
       // Put boxes in one image
       val totalWidth = cropped.map((b:Box) => b.x2-b.x1).sum
@@ -289,6 +308,12 @@ object Datapiece extends App {
     parse(json).extract[List[Box]]
   }
 
+  def time(m: String) {
+    print(m + ": ")
+    println(System.currentTimeMillis - s)
+    s = System.currentTimeMillis
+  }
+
   /*
   def mapJSON(json: String): List[Box] = {
     //var s = System.currentTimeMillis
@@ -315,7 +340,7 @@ object Datapiece extends App {
     val (ratio, percent) = boxToRP(b, buffer)
     val largeBox = Box(x1L, y1L, x2L, y2L)
 
-    //debug("b" -> b)
+    //debug("b" -> b, "largeBox" -> largeBox)
     val cb = find(image, largeBox, ratio, percent, config.minBlobSize, config.border)
 
     Box(x1L + cb.x1, y1L + cb.y1, x1L + cb.x2, y1L + cb.y2, b.name, b.exact)
@@ -330,15 +355,19 @@ object Datapiece extends App {
     val imsize: Float = image.data.length
 
     val sizeOfZeroBased = (x: Box) => ((x.x2 - x.x1) + 1) * ((x.y2 - x.y1) + 1)
-    val sizeOf = (x: Box) => (x.x2 - x.x1) * (x.y2 - x.y1)
+    //val sizeOf = (x: Box) => (x.x2 - x.x1) * (x.y2 - x.y1)
 
-    blobs = blobs.filter(b => sizeOfZeroBased(b) > minBlobSize).filter(b => sizeOfZeroBased(b) < sizeOfZeroBased(area))
+    // --------------------
+
+    // hack for scale
+    // ------------------
+    blobs = blobs.filter(b => sizeOfZeroBased(b) > minBlobSize).filter(b => sizeOfZeroBased(b) < sizeOfZeroBased(area) * (300 / 72))
     //debug("blobs" -> blobs)
 
     if (blobs.length == 0)
       return Box(0, 0, 0, 0, "none")
 
-    val sizes = blobs.map(b => sizeOf(b))
+    val sizes = blobs.map(b => sizeOfZeroBased(b))
 
     val percents = sizes.map(_ / imsize)
 
