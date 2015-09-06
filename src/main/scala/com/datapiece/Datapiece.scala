@@ -80,6 +80,8 @@ object Datapiece extends App {
   def run(config: Config) {
     //Thread.sleep(15000)
 
+    var pixelLength = 0
+
     val total = System.currentTimeMillis
 
     time("start")
@@ -127,76 +129,28 @@ object Datapiece extends App {
     val w = bufferedImage.getWidth
     val h = bufferedImage.getHeight
 
-    /*val minBox = Box(boxes.map(_.x1).min, boxes.map(_.y1).min, boxes.map(_.x2).max, boxes.map(_.y2).max)
-
-    var (x1buf, y1buf, x2buf, y2buf) = (buf, buf, buf, buf)
-
-    if (minBox.x1 - x1buf < 0)
-      x1buf = minBox.x1
-
-    if (minBox.y1 - y1buf < 0)
-      y1buf = minBox.y1
-
-    if (minBox.x2 + x2buf > w)
-      x2buf = w - minBox.x2
-
-    if (minBox.y2 + y2buf > h)
-      y2buf = h - minBox.y2
-
-    val minX = minBox.x1 - x1buf
-    val minY = minBox.y1 - y1buf
-    val maxX = minBox.x2 + x2buf
-    val maxY = minBox.y2 + y2buf
-
-    val minXscale = (minX * scale).toInt
-    val minYscale = (minY * scale).toInt
-    val maxXscale = (maxX * scale).toInt
-    val maxYscale = (maxY * scale).toInt
-
-    val boxesSubimage = boxes.map(b => Box(b.x1 - minX, b.y1 - minY, b.x2 - minX, b.y2 - minY, b.name, b.exact))
-
-    //println("original boxes")
-    //debug("boxes" -> boxes, "boxesSubimage" -> boxesSubimage)
-
-    val subImage = bufferedImage.getSubimage(minXscale, minYscale, maxXscale - minXscale, maxYscale - minYscale)
-
-    //val image = toIntArray(subImage, -2)
-
-*/
-
-    ///---------
-    // Don't translate to subimage
-    val subImage = bufferedImage
-    val boxesSubimage = boxes
-
-    val minXscale = 0
-    val minYscale = 0
-
-    ///-------------
-
     time("before getdata")
-    val bytes = subImage.getRaster().getDataBuffer().asInstanceOf[DataBufferByte].getData()
+    val bytes = bufferedImage.getRaster().getDataBuffer().asInstanceOf[DataBufferByte].getData()
 
     time("getdata")
-    var pixelLength = 0
 
-    if (subImage.getAlphaRaster() != null)
+    if (bufferedImage.getAlphaRaster() != null)
       pixelLength = 4
     else
       pixelLength = 3
 
-    val image = new ArrayImage(bytes, subImage.getWidth, pixelLength)
+    val image = new ArrayImage(bytes, w, pixelLength)
 
     time("before processBox")
-    val cropped: List[Box] = boxesSubimage.map(b => processBox(image, b, buf, scale, config))
+    val cropped = boxes.map(b => processBox(image, b, buf, scale, config))
 
     time("processBox")
 
     // translate back to full image
-    val croppedFullImage = cropped.map(b => Box(b.x1 + minXscale, b.y1 + minYscale, b.x2 + minXscale, b.y2 + minYscale, b.name, b.exact))
+    //val croppedFullImage = cropped.map(b => Box(b.x1 + minXscale, b.y1 + minYscale, b.x2 + minXscale, b.y2 + minYscale, b.name, b.exact))
 
     if (config.jsonOut != "")
-      saveFoundAsText(croppedFullImage, config.jsonOut)
+      saveFoundAsText(cropped, config.jsonOut)
 
     if (config.findOnly)
       return
@@ -207,7 +161,7 @@ object Datapiece extends App {
       var i = 0
       var fname = ""
 
-      for (c <- croppedFullImage) {
+      for (c <- cropped) {
         // File names for named boxes,
         // integer for unnamed
         if (c.name != "")

@@ -4,12 +4,15 @@ version := "0.1"
 
 scalaVersion := "2.11.4"
 
-
 lazy val checksame = taskKey[Unit]("Execute the shell script")
 
 checksame := {
   "./check_same.sh" !
 }
+
+
+libraryDependencies += "com.google.guava" % "guava" % "18.0"
+
 
 libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.2.2"
 
