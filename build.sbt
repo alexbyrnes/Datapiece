@@ -11,6 +11,7 @@ checksame := {
   "./check_same.sh" !
 }
 
+libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.2.2"
 
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.2.10"
 

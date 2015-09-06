@@ -8,12 +8,15 @@ import org.apache.commons.io.IOUtils
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
+import org.json4s.jackson.JsonMethods.mapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import scala.io.Source
 
 import scala.collection.mutable.ListBuffer
 
 import java.io.File
+
+import com.github.tototoshi.csv._
 
 import ammonite.repl.Repl._
 
@@ -29,8 +32,8 @@ object Datapiece extends App {
       c.copy(ratio = x)
     } text ("Approximate ratio, width divided by height, of the target box. Use for processing one box per image.")
     opt[String]('b', "boxes") action { (x, c) =>
-      c.copy(json = x)
-    } text ("JSON bounding boxes file. Use for multiple boxes per image. Format: [{\"x1\":10, \"y1\":10, \"x2\": 20, \"y2\": 30},... ]")
+      c.copy(boxesFile = x)
+    } text ("JSON or CSV bounding boxes file. Use for multiple boxes per image. Format: [{\"name\": \"field_name\", \"x1\":10, \"y1\":10, \"x2\": 20, \"y2\": 30},... ] \n or field_name,10,10,20,30...")
     opt[String]('i', "infile") action { (x, c) =>
       c.copy(infile = x)
     } optional () text ("Image input file.")
@@ -77,27 +80,36 @@ object Datapiece extends App {
 
     val buf = config.buf // Brevity
 
-    val json = Source.fromFile(config.json).mkString
-    val boxes = mapJSON(json)
-    //----
-    /*
-    val boxes = List(
-      Box(name = "contract_dates", x1 = 305, y1 = 105, x2 = 403, y2 = 129),
-      Box(name = "station", x1 = 403, y1 = 180, x2 = 454, y2 = 204),
-      Box(name = "billing_calendar", x1 = 455, y1 = 154, x2 = 534, y2 = 179),
-      Box(name = "billing_cycle", x1 = 403, y1 = 154, x2 = 454, y2 = 179),
-      Box(name = "product", x1 = 304, y1 = 80, x2 = 593, y2 = 105),
-      Box(name = "demographic", x1 = 403, y1 = 229, x2 = 591, y2 = 254),
-      Box(name = "advertiser", x1 = 304, y1 = 130, x2 = 479, y2 = 155),
-      Box(name = "contract_revision", x1 = 403, y1 = 52, x2 = 493, y2 = 80),
-      Box(name = "special_handling", x1 = 403, y1 = 204, x2 = 591, y2 = 229),
-      Box(name = "advertiser_code", x1 = 455, y1 = 279, x2 = 533, y2 = 303),
-      Box(name = "alt_order_no", x1 = 493, y1 = 52, x2 = 592, y2 = 80),
-      Box(name = "estimate_no", x1 = 403, y1 = 105, x2 = 492, y2 = 130),
-      Box(name = "advertiser_address", x1 = 61, y1 = 153, x2 = 274, y2 = 265, exact = true)
-    )
-    */
-    //--------
+    var extension = ""
+
+    try {
+      extension = config.boxesFile.split('.').last.toLowerCase
+    } catch {
+      case e: Exception => throw new Exception("Error: Invalid boxes file.")
+    }
+
+    var boxes: List[Box] = List(Box(0, 0, 0, 0))
+
+    if (extension == "csv") {
+
+      // TODO DOES NOT TRIM
+      val reader = CSVReader.open(new File(config.boxesFile))
+      val csv = reader.all()
+      reader.close()
+
+      boxes = csv.map(x => Box(x(1).toInt, x(2).toInt, x(3).toInt, x(4).toInt, x(0), x(5).toBoolean))
+
+    } else if (extension == "json") {
+
+      val json = Source.fromFile(config.boxesFile).mkString
+
+      boxes = mapJSON(json)
+
+    } else {
+
+      throw new Exception("Error: Unrecognized boxes file extension. Must be json or csv.")
+    }
+
     val scale = config.dpi / config.sourceDpi.toDouble
 
     val bufferedImage = ImageIO.read(new File(config.infile))
@@ -132,17 +144,13 @@ object Datapiece extends App {
 
     val boxesSubimage = boxes.map(b => Box(b.x1 - minX, b.y1 - minY, b.x2 - minX, b.y2 - minY, b.name, b.exact))
 
-    println("original boxes")
+    //println("original boxes")
     //debug("boxes" -> boxes, "boxesSubimage" -> boxesSubimage)
 
     val subImage = bufferedImage.getSubimage(minXscale, minYscale, maxXscale - minXscale, maxYscale - minYscale)
 
-    println(s"minXscale $minXscale, minYscale $minYscale, maxXscale $maxXscale, maxYscale: $maxYscale")
-    println(s"w $w, h $h")
     //val image = toIntArray(subImage, -2)
 
-    println(subImage.getWidth)
-    println(subImage.getHeight)
 */
 
     ///---------
@@ -166,16 +174,10 @@ object Datapiece extends App {
 
     val image = new ArrayImage(bytes, subImage.getWidth, pixelLength)
 
-    println("image, bytes")
-    //debug("image" -> image, "bytes" -> bytes, "getWidth" -> subImage.getWidth, "pl" -> pixelLength)
-
     val cropped: List[Box] = boxesSubimage.map(b => processBox(image, b, buf, scale, config))
 
     // translate back to full image
     val croppedFullImage = cropped.map(b => Box(b.x1 + minXscale, b.y1 + minYscale, b.x2 + minXscale, b.y2 + minYscale, b.name, b.exact))
-
-    println("top")
-    //debug("cropped" -> cropped, "croppedFullImage" -> croppedFullImage, "image" -> image, "bytes" -> bytes)
 
     if (config.jsonOut != "")
       saveFoundAsText(croppedFullImage, config.jsonOut)
@@ -200,8 +202,7 @@ object Datapiece extends App {
         i += 1
       }
 
-    } else {
-      /*
+    } /*else {
       // Put boxes in one image
       val totalWidth = cropped.map((b:Box) => b.x2-b.x1).sum
       val maxHeight = cropped.map((b:Box) => b.y2-b.y1).reduce(Math.max)
@@ -226,9 +227,9 @@ object Datapiece extends App {
         val bufout: Array[Byte] = matBufout.toArray()
         IOUtils.write(bufout, System.out)
       }
-*/
-    }
 
+    }
+*/
   }
 
   def saveFoundAsText(boxes: List[Box], fname: String) {
@@ -263,10 +264,8 @@ object Datapiece extends App {
     }
 
     try {
-      //val submatrix = image.submat(c.y1, c.y2, c.x1, c.x2)
-      val submatrix = image.getSubimage(b.x1, b.y1, (b.x2 - b.x1) + 1, (b.y2 - b.y1) + 1)
-      //Imgcodecs.imwrite(fname + ".png", submatrix)
-      ImageIO.write(submatrix, "png", new File(fname + ".png"))
+      val subimage = image.getSubimage(b.x1, b.y1, (b.x2 - b.x1) + 1, (b.y2 - b.y1) + 1)
+      ImageIO.write(subimage, "png", new File(fname + ".png"))
     } catch {
       case e: Exception => println(e)
     }
@@ -286,12 +285,22 @@ object Datapiece extends App {
   }
 
   def mapJSON(json: String): List[Box] = {
-
     implicit val formats = DefaultFormats
     parse(json).extract[List[Box]]
-
   }
 
+  /*
+  def mapJSON(json: String): List[Box] = {
+    //var s = System.currentTimeMillis
+
+    val r0 = parse[ListBuffer[Map[String, Any]]](json)
+    val r = r0.map(x => Box(x("x1").asInstanceOf[Int], x("y1").asInstanceOf[Int], x("x2").asInstanceOf[Int], x("y2").asInstanceOf[Int], x("name").asInstanceOf[String]))
+    //println(System.currentTimeMillis - s)
+    //val r = List(Box(1, 2, 3, 4, ""))
+    //println("done")
+    r.toList
+  }
+*/
   def processBox(image: ArrayImage, b: Box, buffer: Int, scale: Double, config: Config): Box = {
 
     if (b.exact) {
@@ -306,55 +315,17 @@ object Datapiece extends App {
     val (ratio, percent) = boxToRP(b, buffer)
     val largeBox = Box(x1L, y1L, x2L, y2L)
 
+    //debug("b" -> b)
     val cb = find(image, largeBox, ratio, percent, config.minBlobSize, config.border)
-    println("large")
-    //debug("largeBox" -> largeBox, "b" -> b, "cb" -> cb, "x1L" -> x1L)
 
     Box(x1L + cb.x1, y1L + cb.y1, x1L + cb.x2, y1L + cb.y2, b.name, b.exact)
   }
 
   def find(image: ArrayImage, area: Box, ratio: Double, percentOfWindow: Double, minBlobSize: Int = 2000, border: Int = 2): Box = {
-    /*
-    val pixelLength = 3
-    var row = 0
-    var col = 0
-
-    for (pixel <- 0 until image.data.length) {
-
-      print(image.data(pixel))
-      print(',')
-
-      col += 1
-
-      if (col == (image.w + 1) * pixelLength) {
-        println
-        col = 0
-        row += 1
-      }
-
-    }
-
-    println("---")
-
-    val h = (image.data.length / 3) / image.w
-
-    println(h)
-    println(image.w)
-
-    for (y <- 0 until h) {
-      for (x <- 0 until image.w) {
-        print(image(x, y))
-      }
-      println
-    }
-
-    println("----------------------")
-    */
 
     var blobs = FeatureDetection.labelImage(image, area)
 
-    println("blobs")
-    debug("blobs" -> blobs, "minBlobSize" -> minBlobSize)
+    //debug("blobs" -> blobs)
 
     val imsize: Float = image.data.length
 
@@ -362,9 +333,7 @@ object Datapiece extends App {
     val sizeOf = (x: Box) => (x.x2 - x.x1) * (x.y2 - x.y1)
 
     blobs = blobs.filter(b => sizeOfZeroBased(b) > minBlobSize).filter(b => sizeOfZeroBased(b) < sizeOfZeroBased(area))
-
-    println("blobs2")
-    debug("blobs" -> blobs)
+    //debug("blobs" -> blobs)
 
     if (blobs.length == 0)
       return Box(0, 0, 0, 0, "none")
