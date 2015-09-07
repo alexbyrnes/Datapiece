@@ -3,7 +3,7 @@ package com.datapiece
 import scala.collection.mutable.Stack
 import scala.collection.mutable.{ Map => MutableMap }
 
-import ammonite.repl.Repl._
+//import ammonite.repl.Repl._
 
 object FeatureDetection {
 
@@ -16,10 +16,14 @@ object FeatureDetection {
   }
 
   def labelImage(img: ArrayImage, m: Box): List[Box] = {
-    time("fd start")
 
-    val w = (m.x2 - m.x1) + 1
-    val h = (m.y2 - m.y1) + 1
+    val mx1 = m.x1
+    val my1 = m.y1
+    val mx2 = m.x2
+    val my2 = m.y2
+
+    val w = (mx2 - mx1) + 1
+    val h = (my2 - my1) + 1
     var lab = 1
     var pos = Array[Int]()
     val stack = Stack[Array[Int]]()
@@ -27,26 +31,23 @@ object FeatureDetection {
 
     var (i, j, x, y) = (-1, -1, -1, -1)
 
-    var xc = m.x1
+    var xc = mx1
     var yc = -1
     var lr = -1
 
     var xcl = -1
     var ycl = -1
-    time("fd before while")
 
-    while (xc <= m.x2) {
+    while (xc <= mx2) {
 
-      yc = m.y1
+      yc = my1
 
-      while (yc <= m.y2) {
+      while (yc <= my2) {
 
-        xcl = xc - m.x1
-        ycl = yc - m.y1
+        xcl = xc - mx1
+        ycl = yc - my1
 
         if (img(xc, yc) != 0 && label(xcl)(ycl) <= 0) {
-
-          //debug("label" -> label, "img" -> img)
 
           stack.push(Array(xc, yc))
           label(xcl)(ycl) = lab
@@ -58,8 +59,8 @@ object FeatureDetection {
             i = pos(0)
             j = pos(1)
 
-            x = m.x1
-            y = m.y1
+            x = mx1
+            y = my1
 
             lr = -1
             while (lr <= 1) {
@@ -69,10 +70,10 @@ object FeatureDetection {
                   x = i + lr
                   y = j + ud
 
-                  if (x <= m.x2 && y <= m.y2 && x >= m.x1 && y >= m.y1) {
-                    if (img(x, y) == -1 && label(x - m.x1)(y - m.y1) == 0) {
+                  if (x <= mx2 && y <= my2 && x >= mx1 && y >= my1) {
+                    if (img(x, y) == -1 && label(x - mx1)(y - my1) == 0) {
                       stack.push(Array(x, y))
-                      label(x - m.x1)(y - m.y1) = lab
+                      label(x - mx1)(y - my1) = lab
                     }
                   }
 
@@ -89,10 +90,7 @@ object FeatureDetection {
       }
       xc += 1
     }
-    time("while")
-    val r = getBoundingBoxes(label)
-    time("get bb")
-    r
+    getBoundingBoxes(label)
   }
 
   def getBoundingBoxes(img: Array[Array[Int]]): List[Box] = {
