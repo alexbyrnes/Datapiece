@@ -11,21 +11,14 @@ import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.JsonMethods.mapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import scala.io.Source
-
 import scala.collection.mutable.ListBuffer
-
 import java.io.File
-
 import com.github.tototoshi.csv._
-
-//import ammonite.repl.Repl._
 
 object Datapiece {
 
-  var s = System.currentTimeMillis
-
   def run(config: Config) {
-    //Thread.sleep(15000)
+
     val total = System.currentTimeMillis
 
     val buf = config.buf // Brevity
@@ -48,8 +41,6 @@ object Datapiece {
       return
 
     writeImage(bufferedImage, cropped, config)
-    print("total: ")
-    println(System.currentTimeMillis - total)
 
   }
 
@@ -132,13 +123,9 @@ object Datapiece {
 
     if (config.split) {
       writeSplitImages(bufferedImage, cropped, config)
-
     } else {
-
       writeWholeImage(bufferedImage, cropped, config)
-
     }
-
   }
 
   def writeSplitImages(bufferedImage: BufferedImage, cropped: List[Box], config: Config) {
@@ -287,12 +274,6 @@ object Datapiece {
   def mapJSON(json: String): List[Box] = {
     implicit val formats = DefaultFormats
     parse(json).extract[List[Box]]
-  }
-
-  def time(m: String) {
-    print(m + ": ")
-    println(System.currentTimeMillis - s)
-    s = System.currentTimeMillis
   }
 
 }

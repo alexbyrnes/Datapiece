@@ -11,9 +11,6 @@ checksame := {
 }
 
 
-libraryDependencies += "com.google.guava" % "guava" % "18.0"
-
-
 libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.2.2"
 
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.2.10"
@@ -27,6 +24,5 @@ libraryDependencies += "commons-io" % "commons-io" % "2.4"
 libraryDependencies += "com.github.scopt" % "scopt_2.11" % "3.3.0"
 
 libraryDependencies += "com.lihaoyi" % "ammonite-repl" % "0.4.6" cross CrossVersion.full
-
 
 scalariformSettings

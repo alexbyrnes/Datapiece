@@ -1,19 +1,9 @@
 package com.datapiece
 
 import scala.collection.mutable.Stack
-import scala.collection.mutable.{ Map => MutableMap }
-
-//import ammonite.repl.Repl._
+import scala.collection.mutable.Map
 
 object FeatureDetection {
-
-  var s = System.currentTimeMillis
-
-  def time(m: String) {
-    print(m + ": ")
-    println(System.currentTimeMillis - s)
-    s = System.currentTimeMillis
-  }
 
   def labelImage(img: ArrayImage, m: Box): List[Box] = {
 
@@ -98,7 +88,7 @@ object FeatureDetection {
     val w = img.length
     val h = img(0).length
 
-    var boxes = MutableMap[Int, Box]()
+    var boxes = Map[Int, Box]()
 
     var l = 0
 
