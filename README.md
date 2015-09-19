@@ -68,14 +68,12 @@ Tabula's JSON bounding box output can be used as an unofficial front-end.  Go to
 ```
 
 Datapiece 0.1
+
 Usage: datapiece [options]
 
-  -p <value> | --percentOfWindow <value>
-        Approximate percent of the total image area taken up by the target box. Use for processing one box per image.
-  -r <value> | --ratio <value>
-        Approximate ratio, width divided by height, of the target box. Use for processing one box per image.
   -b <value> | --boxes <value>
-        JSON bounding boxes file. Use for multiple boxes per image. Format: [{"x1":10, "y1":10, "x2": 20, "y2": 30},... ]
+        JSON or CSV bounding boxes file. Use for multiple boxes per image. Format: [{"name": "field_name", "x1":10, "y1":10, "x2": 20, "y2": 30},... ] 
+ or field_name,10,10,20,30...
   -i <value> | --infile <value>
         Image input file.
   -o <value> | --outfile <value>
@@ -90,14 +88,13 @@ Usage: datapiece [options]
         DPI of image.
   -s <value> | --sourcedpi <value>
         DPI of JSON. Default is 72. If your bounding box JSON is in points (pts) from a standard PDF, leave this blank.
-  -t <value> | --threshold <value>
-        Threshold for binarization. Default is 128 (Gray halfway between white and black).
   -S | --split
         Split images into separate files. Uses prefix specified by the outfile option. Example: -S -o /tmp/out will produce /tmp/out0.png, /tmp/out1.png etc...
   -j <value> | --jsonout <value>
         Filename for boxes found (JSON).  If used with --findonly flag, no images will be produced.
   -f | --findonly
         Find boxes only. Filename for JSON output required.
+
 
 ```
 
