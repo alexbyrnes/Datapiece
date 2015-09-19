@@ -103,7 +103,7 @@ Usage: datapiece [options]
 
 See Datapiece.scala for most of the code.  Recompile with:
 
-    sbt -Djava.library.path=lib/linux -java-home /usr/lib/jvm/java-7-openjdk-amd64/ assembly
+    sbt assembly
 
 Pull requests welcome.
 
