@@ -10,8 +10,8 @@ Page segmentation is part of the preprocessing done by Optical Character Recogni
 
 ### Requirements
 
-     Linux
-     Java 1.7
+     Java 1.7+
+     SBT
 
 ### Installation
 
