@@ -3,6 +3,11 @@ package com.datapiece
 import scala.collection.mutable.Stack
 import scala.collection.mutable.Map
 
+/**
+ * The blob (connected component) detection and minimum
+ * bounding box algorithms.
+ */
+
 object FeatureDetection {
 
   def labelImage(img: ArrayImage, m: Box): List[Box] = {
@@ -37,7 +42,7 @@ object FeatureDetection {
         xcl = xc - mx1
         ycl = yc - my1
 
-        if (img(xc, yc) != 0 && label(xcl)(ycl) <= 0) {
+        if (label(xcl)(ycl) <= 0) {
 
           stack.push(Array(xc, yc))
           label(xcl)(ycl) = lab

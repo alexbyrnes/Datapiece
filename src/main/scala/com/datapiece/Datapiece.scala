@@ -1,50 +1,101 @@
 package com.datapiece
 
 import java.awt.image.BufferedImage
+import java.awt.Color
 import java.awt.image.DataBufferByte
 import javax.imageio.ImageIO
 import java.io.{ InputStreamReader, InputStream }
-import org.apache.commons.io.IOUtils
-import org.json4s._
-import org.json4s.JsonDSL._
-import org.json4s.jackson.JsonMethods._
-import org.json4s.jackson.JsonMethods.mapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import java.io.{ File => JFile }
+
 import scala.io.Source
 import scala.collection.mutable.ListBuffer
-import java.io.File
+
+import better.files._
+
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.tototoshi.csv._
 
+import org.apache.commons.io.IOUtils
+
+import org.json4s.jackson.JsonMethods._
+import org.json4s.jackson.JsonMethods.mapper
+import org.json4s._
+import org.json4s.JsonDSL._
+import scala.concurrent.{ Future, Await }
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+/**
+ * The core functions: opening images and Boxes file, detecting
+ * exact crop area for each Box and saving the result.
+ */
 object Datapiece {
 
+  /**
+   * Run the process.
+   */
   def run(config: Config) {
 
-    val total = System.currentTimeMillis
+    var boxes = getBoxes(config.boxesFile)
+    val scale = getScale(config.dpi, config.sourceDpi)
+    val input = File(config.infile)
 
-    val buf = config.buf // Brevity
+    if (!input.isDirectory) {
 
-    var extension = getExtension(config)
-    var boxes = getBoxes(config, extension)
-    val scale = getScale(config)
-    val bufferedImage = getImage(config)
-    val bytes = getImageData(bufferedImage)
-    var pixelLength = getPixelLength(bufferedImage)
+    }
 
-    val image = new ArrayImage(bytes, bufferedImage.getWidth, pixelLength)
+    val outdir = File(config.outfile)
 
-    val cropped = boxes.map(b => processBox(image, b, buf, scale, config))
+    val files = input.glob(".*.png", syntax = "regex")
 
-    if (config.jsonOut != "")
-      saveFoundAsText(cropped, config.jsonOut)
+    val futureList = Future.traverse(files)(infile ⇒
+      Future {
 
-    if (config.findOnly)
-      return
+        if (!config.quiet) {
+          println("Processing: " + infile.path)
+        }
 
-    writeImage(bufferedImage, cropped, config)
+        val bufferedImage = getImage(infile.path.toString)
+        val bytes = getImageData(bufferedImage)
+        var pixelLength = getPixelLength(bufferedImage)
+        val image = new ArrayImage(bytes, bufferedImage.getWidth, pixelLength)
+
+        val cropped = boxes.map(b => processBox(image, b, scale, config))
+
+        if (config.jsonOut != "") {
+          saveFoundAsText(cropped, config.jsonOut)
+        }
+
+        var outfile = outdir.path.toString
+
+        if (!config.findOnly) {
+
+          var infileBase = infile.name
+
+          if (config.split) {
+            infileBase = infile.name.toString.split('.')(0) + "_"
+          } else if (outdir.isDirectory) {
+            outfile = outdir.path + "/" + infileBase
+          }
+
+          writeImage(bufferedImage, cropped, outfile, config.split, config.horizontal)
+        }
+
+        outfile
+      }
+    )
+
+    val done = Await.result(futureList, 800 hour)
 
   }
 
-  def processBox(image: ArrayImage, b: Box, buffer: Int, scale: Double, config: Config): Box = {
+  /**
+   * Apply per-Box settings like "exact," use derived settings (scale, ratio, percent),
+   * and pass specific global parameters to find method.
+   */
+  def processBox(image: ArrayImage, b: Box, scale: Double, config: Config): Box = {
+
+    val buffer = config.buf
 
     if (b.exact) {
       return Box((scale * b.x1).toInt, (scale * b.y1).toInt, (scale * b.x2).toInt, (scale * b.y2).toInt, b.name, b.exact)
@@ -63,7 +114,16 @@ object Datapiece {
     Box(x1L + cb.x1, y1L + cb.y1, x1L + cb.x2, y1L + cb.y2, b.name, b.exact)
   }
 
+  /**
+   * Size of Box when coordinates are zero-based.
+   */
+
   val sizeOfZeroBased = (x: Box) => ((x.x2 - x.x1) + 1) * ((x.y2 - x.y1) + 1)
+
+  /**
+   * Algorithm for guessing correct connected component bounding
+   * box based on the size and aspect ratio.
+   */
 
   def find(image: ArrayImage, area: Box, ratio: Double, percentOfWindow: Double, scale: Double, minBlobSize: Int = 2000, border: Int = 2): Box = {
 
@@ -119,16 +179,22 @@ object Datapiece {
 
   }
 
-  def writeImage(bufferedImage: BufferedImage, cropped: List[Box], config: Config) {
+  /**
+   * Save image or images.
+   */
 
-    if (config.split) {
-      writeSplitImages(bufferedImage, cropped, config)
+  def writeImage(bufferedImage: BufferedImage, cropped: List[Box], outfile: String, split: Boolean, horizontal: Boolean = false) {
+
+    if (split) {
+      writeSplitImages(bufferedImage, cropped, outfile)
+    } else if (horizontal) {
+      writeWholeImageHorizontal(bufferedImage, cropped, outfile)
     } else {
-      writeWholeImage(bufferedImage, cropped, config)
+      writeWholeImageVertical(bufferedImage, cropped, outfile)
     }
   }
 
-  def writeSplitImages(bufferedImage: BufferedImage, cropped: List[Box], config: Config) {
+  def writeSplitImages(bufferedImage: BufferedImage, cropped: List[Box], outfile: String) {
     var i = 0
     var fname = ""
 
@@ -136,16 +202,16 @@ object Datapiece {
       // File names for named boxes,
       // integer for unnamed
       if (c.name != "")
-        fname = config.outfile + c.name
+        fname = outfile + c.name
       else
-        fname = config.outfile + i
+        fname = outfile + i
 
       writeSubImage(c, bufferedImage, fname)
       i += 1
     }
   }
 
-  def writeWholeImage(bufferedImage: BufferedImage, cropped: List[Box], config: Config) {
+  def writeWholeImageHorizontal(bufferedImage: BufferedImage, cropped: List[Box], outfile: String) {
 
     val totalWidth = cropped.map((b: Box) => b.x2 - b.x1).sum
     val maxHeight = cropped.map((b: Box) => b.y2 - b.y1).reduce(Math.max)
@@ -163,13 +229,33 @@ object Datapiece {
       cursor += c.x2 - c.x1
     }
 
-    if (config.outfile != "") {
-      ImageIO.write(combined, "PNG", new File(config.outfile))
-    } else {
+    ImageIO.write(combined, "PNG", new JFile(outfile))
 
-      throw new Exception("Error: No outfile.")
+  }
 
+  def writeWholeImageVertical(bufferedImage: BufferedImage, cropped: List[Box], outfile: String) {
+
+    val totalHeight = cropped.map((b: Box) => b.y2 - b.y1).sum
+    val maxWidth = cropped.map((b: Box) => b.x2 - b.x1).reduce(Math.max)
+
+    val combined = new BufferedImage(maxWidth, totalHeight, BufferedImage.TYPE_INT_RGB)
+
+    val g = combined.getGraphics
+
+    g.setColor(Color.WHITE)
+    g.fillRect(0, 0, combined.getWidth, combined.getHeight)
+
+    var cursor = 0
+    for (c <- cropped) {
+
+      var si = bufferedImage.getSubimage(c.x1, c.y1, c.x2 - c.x1, c.y2 - c.y1)
+      g.drawImage(si, 0, cursor, null)
+
+      cursor += c.y2 - c.y1
     }
+
+    ImageIO.write(combined, "PNG", new JFile(outfile))
+
   }
 
   def getPixelLength(bufferedImage: BufferedImage): Int = {
@@ -183,33 +269,46 @@ object Datapiece {
   }
 
   def getImageData(bufferedImage: BufferedImage): Array[Byte] = {
-
     bufferedImage.getRaster().getDataBuffer().asInstanceOf[DataBufferByte].getData()
   }
 
-  def getImage(config: Config): BufferedImage = {
-    ImageIO.read(new File(config.infile))
+  def getImage(infile: String): BufferedImage = {
+    ImageIO.read(new JFile(infile))
   }
 
-  def getScale(config: Config): Double = {
-    config.dpi / config.sourceDpi.toDouble
+  def getScale(dpi: Int, sourceDpi: Int): Double = {
+    dpi / sourceDpi.toDouble
   }
 
-  def getBoxes(config: Config, extension: String) = {
+  /**
+   * Read the Boxes file.
+   */
+
+  def getBoxes(boxesFile: String) = {
+    val extension = getExtension(boxesFile)
+
     var boxes: List[Box] = List(Box(0, 0, 0, 0))
 
     if (extension == "csv") {
 
-      // TODO DOES NOT TRIM
-      val reader = CSVReader.open(new File(config.boxesFile))
+      val reader = CSVReader.open(new JFile(boxesFile))
       val csv = reader.all()
       reader.close()
 
-      boxes = csv.map(x => Box(x(1).toInt, x(2).toInt, x(3).toInt, x(4).toInt, x(0), x(5).toBoolean))
+      boxes = csv.map { x =>
+        var tm = x.map(_.trim)
+        Box(
+          tm(1).toInt,
+          tm(2).toInt,
+          tm(3).toInt,
+          tm(4).toInt,
+          tm(0),
+          tm(5).toBoolean)
+      }
 
     } else if (extension == "json") {
 
-      val json = Source.fromFile(config.boxesFile).mkString
+      val json = Source.fromFile(boxesFile).mkString
 
       boxes = mapJSON(json)
 
@@ -220,11 +319,11 @@ object Datapiece {
     boxes
   }
 
-  def getExtension(config: Config): String = {
+  def getExtension(boxesFile: String): String = {
 
     var extension = ""
     try {
-      extension = config.boxesFile.split('.').last.toLowerCase
+      extension = boxesFile.split('.').last.toLowerCase
     } catch {
       case e: Exception => throw new Exception("Error: Invalid boxes file.")
     }
@@ -252,7 +351,7 @@ object Datapiece {
 
     try {
       val subimage = image.getSubimage(b.x1, b.y1, (b.x2 - b.x1) + 1, (b.y2 - b.y1) + 1)
-      ImageIO.write(subimage, "png", new File(fname + ".png"))
+      ImageIO.write(subimage, "png", new JFile(fname + ".png"))
     } catch {
       case e: Exception => println(e)
     }

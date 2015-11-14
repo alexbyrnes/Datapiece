@@ -25,4 +25,6 @@ libraryDependencies += "com.github.scopt" % "scopt_2.11" % "3.3.0"
 
 libraryDependencies += "com.lihaoyi" % "ammonite-repl" % "0.4.6" cross CrossVersion.full
 
-scalariformSettings
+libraryDependencies += "com.github.pathikrit" %% "better-files" % "2.13.0"
+
+//scalariformSettings
