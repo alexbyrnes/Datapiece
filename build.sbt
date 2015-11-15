@@ -27,4 +27,4 @@ libraryDependencies += "com.lihaoyi" % "ammonite-repl" % "0.4.6" cross CrossVers
 
 libraryDependencies += "com.github.pathikrit" %% "better-files" % "2.13.0"
 
-//scalariformSettings
+scalariformSettings

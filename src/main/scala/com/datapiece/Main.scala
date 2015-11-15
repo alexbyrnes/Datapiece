@@ -18,6 +18,9 @@ object Main extends App {
     opt[String]('o', "outfile") action { (x, c) =>
       c.copy(outfile = x)
     } text ("Image output file or directory.  If input is a directory, output must be a directory.")
+    opt[String]('M', "maskfile") action { (x, c) =>
+      c.copy(maskfile = x)
+    } text ("Mask to use to identify target areas. Output will still come from input file.")
     opt[Int]('R', "buffer") action { (x, c) =>
       c.copy(buf = x)
     } text ("Buffer around the target boxes. Default: 10 pts (or pixels if bounding boxes are in pixels. See dpi and sourcedpi.) Should be large enough to account for shift, skew, enlargement of target boxes but small enough not to include other boxes on the page. Overlap with bounding boxes in the JSON is OK.")
@@ -48,6 +51,9 @@ object Main extends App {
     opt[Unit]('h', "horizontal") action { (x, c) =>
       c.copy(horizontal = true)
     } text ("Output with images laid out horizontally. Only applies when split (-S) is not used. Default is vertical.")
+    opt[Int]('c', "stretch") action { (x, c) =>
+      c.copy(stretch = x)
+    } text ("Pixels of stretch to add to search area. Useful for eliminating large candidate areas caused by whitespace at the edges of search area.")
 
   }
 

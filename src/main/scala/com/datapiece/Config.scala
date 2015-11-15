@@ -8,6 +8,7 @@ case class Config(
   boxesFile: String = "",
   infile: String = "",
   outfile: String = "",
+  maskfile: String = "",
   dpi: Int = 72,
   sourceDpi: Int = 72,
   buf: Int = 10,
@@ -18,4 +19,5 @@ case class Config(
   jsonOut: String = "",
   findOnly: Boolean = false,
   quiet: Boolean = false,
-  horizontal: Boolean = false)
+  horizontal: Boolean = false,
+  stretch: Int = 5)

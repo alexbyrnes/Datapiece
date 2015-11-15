@@ -4,23 +4,19 @@ import java.awt.image.BufferedImage
 import java.awt.Color
 import java.awt.image.DataBufferByte
 import javax.imageio.ImageIO
-import java.io.{ InputStreamReader, InputStream }
 import java.io.{ File => JFile }
 
 import scala.io.Source
-import scala.collection.mutable.ListBuffer
 
 import better.files._
 
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.tototoshi.csv._
 
-import org.apache.commons.io.IOUtils
-
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.JsonMethods.mapper
 import org.json4s._
-import org.json4s.JsonDSL._
+
 import scala.concurrent.{ Future, Await }
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -39,10 +35,7 @@ object Datapiece {
     var boxes = getBoxes(config.boxesFile)
     val scale = getScale(config.dpi, config.sourceDpi)
     val input = File(config.infile)
-
-    if (!input.isDirectory) {
-
-    }
+    var masked = false
 
     val outdir = File(config.outfile)
 
@@ -55,7 +48,12 @@ object Datapiece {
           println("Processing: " + infile.path)
         }
 
-        val bufferedImage = getImage(infile.path.toString)
+        val infilePath = config.maskfile match {
+          case "" => infile.path.toString
+          case mask => File(mask).path.toString
+        }
+
+        var bufferedImage = getImage(infilePath)
         val bytes = getImageData(bufferedImage)
         var pixelLength = getPixelLength(bufferedImage)
         val image = new ArrayImage(bytes, bufferedImage.getWidth, pixelLength)
@@ -76,6 +74,10 @@ object Datapiece {
             infileBase = infile.name.toString.split('.')(0) + "_"
           } else if (outdir.isDirectory) {
             outfile = outdir.path + "/" + infileBase
+          }
+
+          if (masked) {
+            bufferedImage = getImage(infile.path.toString)
           }
 
           writeImage(bufferedImage, cropped, outfile, config.split, config.horizontal)
@@ -109,7 +111,7 @@ object Datapiece {
     val (ratio, percent) = boxToRP(b, buffer)
     val largeBox = Box(x1L, y1L, x2L, y2L)
 
-    val cb = find(image, largeBox, ratio, percent, scale, config.minBlobSize, config.border)
+    val cb = find(image, largeBox, ratio, percent, scale, config.minBlobSize, config.border, config.stretch)
 
     Box(x1L + cb.x1, y1L + cb.y1, x1L + cb.x2, y1L + cb.y2, b.name, b.exact)
   }
@@ -125,13 +127,17 @@ object Datapiece {
    * box based on the size and aspect ratio.
    */
 
-  def find(image: ArrayImage, area: Box, ratio: Double, percentOfWindow: Double, scale: Double, minBlobSize: Int = 2000, border: Int = 2): Box = {
+  def find(image: ArrayImage, area: Box, ratio: Double, percentOfWindow: Double, scale: Double, minBlobSize: Int = 2000, border: Int = 2, stretch: Int = 0): Box = {
 
-    var blobs = FeatureDetection.labelImage(image, area)
+    // We stretch by a few pixes in the search area so
+    // the total area doesn't become a candidate.
+    val areaLong = Box(area.x1 + stretch, area.y1, area.x2, area.y2)
+
+    var blobs = FeatureDetection.labelImage(image, areaLong)
 
     val imsize: Float = image.data.length
 
-    blobs = blobs.filter(b => sizeOfZeroBased(b) > minBlobSize).filter(b => sizeOfZeroBased(b) < sizeOfZeroBased(area) * scale)
+    blobs = blobs.filter(b => sizeOfZeroBased(b) > minBlobSize)
 
     if (blobs.length == 0)
       return Box(0, 0, 0, 0, "none")
@@ -170,7 +176,7 @@ object Datapiece {
 
     val b = blobs(b_index)
 
-    val x1 = b.x1.toInt + border
+    val x1 = b.x1.toInt + border + stretch
     val y1 = b.y1.toInt + border
     val x2 = b.x2.toInt - border
     val y2 = b.y2.toInt - border
