@@ -1,3 +1,5 @@
+## Datapiece
+
 Datapiece does high performance page segmentation for documents with tables, fill-in-the-blanks, or other small areas of interest across many files.  The output is the interest areas cropped exactly based on an estimated location.  This is primarily useful for large transcription efforts with Optical Character Recognition (OCR) but should help document processing for publication, storage, or to make reading the documents easier.
 
 Documents with data in them make OCR on whole pages difficult. Data tends to come in small strings of characters surrounded by lines and boxes.
