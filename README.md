@@ -31,7 +31,9 @@ Download a pre-built jar file, or rebuild the archive with `sbt assembly`.  Inst
     
 You should see images like the following in the out directory.
 
+---
 ![contract dates](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/out/contract2_contract_dates.png)
+---
 
 ### Usage
 
