@@ -15,6 +15,9 @@ Data documents:
 
 *Page segmentation is part of the preprocessing done by OCR programs to divide a printed page into paragraphs, headers, sidebars or other blocks of text.
 
+![explainer](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/explainer.png)
+
+
 ## Installation
 
 ### Requirements
@@ -48,10 +51,8 @@ billing_calendar, 455, 154, 534, 179, false
 
 Each JSON object or CSV row corresponds to the outline of a field taken from a representative document with with point (x1, y1) at the top left corner, and (x2, y2) at the bottom right.  This is an approximate guess at the size, and location of the same field in other documents.  Datapiece will take this information for many fields and many PNG images and output the fields as separate images or one horizontally or vertically aligned image.
 
-![explainer](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/explainer.png)
 
-
-[Example input document](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/pngs/contract2.png)
+![example output](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/contract2_in.png)
 
 After processing:
 
