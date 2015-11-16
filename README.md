@@ -60,7 +60,7 @@ After processing:
 
 ### Examples using [FCC Political Files](https://stations.fcc.gov/)
 
-("datapiece" refers to the one-line script in the root directory.  `java -jar datapiece.jar` is equivalent.)
+(`datapiece` refers to the one-line script in the root directory.  `java -jar datapiece.jar` is equivalent.)
 
 Output single vertically-arranged image.
 
@@ -161,7 +161,9 @@ Usage: datapiece [options]
 
 *See here first if you have trouble.*
 
-Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of the upper left and lower right corners of the bounding box, not the upper left coordinate and the height/width.  Some graphics programs will give coordinates with height/width.  Also note the coordinates are in points for compatibility with Tabula and other PDF applications.  To get an input image for Datapiece you need to convert a PDF to PNG format *at a particular resolution*.  For OCR this generally needs to be pretty high like 300 dots per inch.  If you convert your PDF using 300 DPI, put 300 as the dpi parameter to Datapiece and everything should work out fine.  The numbers you get from Tabula or another PDF program from the original PDF will be translated to pixels in the .png file.  If you got your bounding boxes from the input PNG, just leave --dpi out.
+Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of the upper left and lower right corners of the bounding box, *not the upper left coordinate and the height/width*.  Also note the coordinates are in [points](https://en.wikipedia.org/wiki/Point_(typography)) for compatibility with Tabula and other PDF applications.  To get an input image for Datapiece you need to [convert a PDF to PNG format](#extracting-from-pdfs) *at a particular resolution*.  For OCR this generally needs to be very high like 300 dots-per-inch and above.  If you convert your PDF using 300 DPI, put 300 as the dpi parameter to Datapiece and everything should work out fine.  The numbers you get from Tabula or another PDF program from the original PDF will be translated to pixels in the .png file.  If you got your bounding boxes from the input PNG, just leave --dpi out.
+
+In some circumstances, the DPI of the source PDF will be something other than 72.  In these (rare) instances, use both the --dpi parameter for the resolution you extracted at, and --sourcedpi for the DPI of the original PDF.  Most of the time --dpi is the only parameter used.
 
 See [boxes_contract.json](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json), [boxes_contract.csv](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.csv) and [Integration with Tabula](#integrating-with-tabula) for more information on generating bounding boxes.
 
