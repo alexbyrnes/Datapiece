@@ -4,11 +4,13 @@ Documents with data in them make OCR on whole pages difficult. Data tends to com
 
 Differences between standard paragraph text and "data documents":
 
-"Data documents":
-     * Have little context to use for correction, values tend to be codes, dates, and numbers, or non-dictionary words such as first and last names.
-     * Have markup used to identify the data to the human eye that is difficult for OCR applications to distinguish from characters, and symbols.
-     * Come in large numbers: disclosure forms, tax documents, election results, and other institutional forms.
-     
+Data documents:
+
+* Have little context to use for correcting errors. Values tend to be codes, dates, and numbers, or non-dictionary words such as first and last names.
+* Have markup used to identify the data to the human eye that is difficult for OCR applications to distinguish from characters, and symbols.
+* Come in large numbers: disclosure forms, tax documents, election results, and other institutional forms.
+
+
 *Page segmentation is part of the preprocessing done by OCR programs to divide a printed page into paragraphs, headers, sidebars or other blocks of text.
 
 ## Installation
