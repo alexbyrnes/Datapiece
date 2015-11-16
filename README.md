@@ -1,64 +1,110 @@
-Datapiece is page segmentation for documents with tables, fill-in-the-blanks, or other small areas of interest across many files.  Output is each area cropped exactly, or using computer vision to detect the location of a bounding box based on an estimate from the user.
+Datapiece does high performance page segmentation for documents with tables, fill-in-the-blanks, or other small areas of interest across many files.  The output is the interest areas cropped exactly based on an estimated location.  This is primarily useful for large transcription efforts with Optical Character Recognition (OCR) but should help document processing for publication, storage, or to make reading the documents easier.
 
-Documents with data in them tend to make Optical Character Recognition on whole pages difficult: small strings of alphanumeric characters surrounded by lines and boxes.  These pieces of data are also generally sensitive to OCR errors.  There's little context to use for correction, values tend to be codes, dates, and numbers, or non-dictionary words such as first and last names, and the markup used to identify the data to the human eye tends to make OCR programs batty.  The aim of Datapiece is to break documents into precisely-cropped images for further processing or publication.
+Documents with data in them make OCR on whole pages difficult. Data tends to come in small strings of characters surrounded by lines and boxes.
 
+Differences between standard paragraph text and "data documents":
 
-### Page Segmentation
+"Data documents":
+     * Have little context to use for correction, values tend to be codes, dates, and numbers, or non-dictionary words such as first and last names.
+     * Have markup used to identify the data to the human eye that is difficult for OCR applications to distinguish from characters, and symbols.
+     * Come in large numbers: disclosure forms, tax documents, election results, and other institutional forms.
+     
+*Page segmentation is part of the preprocessing done by OCR programs to divide a printed page into paragraphs, headers, sidebars or other blocks of text.
 
-Page segmentation is part of the preprocessing done by Optical Character Recognition (OCR) programs to divide a printed page into paragraphs, headers, sidebars or other blocks of text.
-
+## Installation
 
 ### Requirements
 
      Java 1.7+
-     SBT
-
-### Installation
 
 ### Usage
 
-Datapiece can be run using Nailgun to avoid the JVM startup cost or on its own.  Examples are provided in run-examples.sh and run-examples-nailgun.sh (`./start-nailgun-server.sh` first).
+Prepare a JSON or CSV file with a bounding box for each field you're interested in extracting.  Each "box" should have a name, coordinates of the upper left and lower right corners of the box and optionally "exact" equal to true or false.  `"exact": true` tells datapiece to skip any search to find the exact area to crop and just use the exact coordinates given.  This is used with very predictable forms, or areas that don't have lines around them (see the [advertiser_address](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json) field from the examples.  JSON can be produced from [Tabula](integration-with-tabula).  Both formats can be written from GIMP, Photoshop, Adobe Reader etc.  
 
-The input bounding boxes is a JSON list of objects:
+See [Notes on coordinates](#notes-on-coordinates) for details on how to write coordinates in points at a particular resolution, or pixels. 
 
+See [Extracting from PDFs](#extracting-from-pdfs) for instructions on extracting PNGs from PDFs, thresholding, and [creating masks](#using-mask-files).
+
+
+###### JSON
 ```json
 
 [{"name": "contract_dates", "x1": 305, "y1": 105, "x2": 403, "y2": 129},
  {"name": "station", "x1": 403, "y1": 180, "x2": 454, "y2": 204},
  {"name": "billing_calendar", "x1": 455, "y1": 154, "x2": 534, "y2": 179}
 ]
+```
+###### CSV
 
-
+```text
+contract_dates, 305, 105, 403, 129, false
+station, 403, 180, 454, 204, false
+billing_calendar, 455, 154, 534, 179, false
 ```
 
-### Notes on coordinates
+Each JSON object or CSV row corresponds to the outline of a field taken from a representative document with with point (x1, y1) at the top left corner, and (x2, y2) at the bottom right.  This is an approximate guess at the size, and location of the same field in other documents.  Datapiece will take this information for many fields and many PNG images and output the fields as separate images or one horizontally or vertically aligned image.
 
-*See here first if you have trouble.*
-
-Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of the upper left and lower right corners of the bounding box, not the upper left coordinate and the height/width.  Some graphics programs will give coordinates with height/width.  Also note the coordinates are in points for compatibility with Tabula and other PDF applications.  To get an input image for Datapiece you need to convert a PDF to PNG format *at a particular resolution*.  For OCR this generally needs to be pretty high like 300 dots per inch.  If you convert your PDF using 300 DPI, put 300 as the dpi parameter to Datapiece and everything should work out fine.  The numbers you get from Tabula or another PDF program from the original PDF will be translated to pixels in the .png file.  If you got your bounding boxes from the input PNG, just leave --dpi out.
-
-See boxes_contract.json and "Integration with Tabula" below for more information on generating bounding boxes.
+![explainer](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/explainer.png)
 
 
-### Examples
+[Example input document](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/pngs/contract2.png)
 
-Output single horizontally-arranged image and the JSON bounding boxes found.
+After processing:
 
-    datapiece -i pngs/contract2.png -b boxes_contract.json -o out/contract2_one_line.png --dpi 300 --jsonout out/contract2.json
+![example output](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/contract2.png)
 
+
+### Examples using [FCC Political Files](https://stations.fcc.gov/)
+
+("datapiece" refers to the one-line script in the root directory.  `java -jar datapiece.jar` is equivalent.)
+
+Output single vertically-arranged image.
+
+    datapiece -i pngs/contract2.png -b boxes_contract.csv --dpi 300 -o out/contract2_out.png
+
+Include a JSON file with the coordinates of the fields found.
+
+    datapiece -i pngs/contract2.png -b boxes_contract.csv --dpi 300 --jsonout out/contract2.json -o out/contract2_out.png
 
 Output series of images named out/contract2_<field>.png with --split.
 
     datapiece -i pngs/contract2.png -b boxes_contract.json -o out/contract2_ --dpi 300 --split
 
+Process whole directory.
 
-Output JSON without images with --findonly.
+    datapiece -i pngs/ -b boxes_contract.json -o out/ --dpi 300
 
-See all command line options with `datapiece --help`
+#### Extracting from PDFs
+
+One easy way to extract PNGs from a large number of PDFs is Ghostscript and ImageMagick:
+
+Extract a PNG from a PDF.
+
+    gs -sDEVICE=png16m -r300 in.pdf -o image.png 
+
+(Ghostscript options like `-dFirstPage=1 -dLastPage=1` are also useful.)
+
+Threshold the PNG using ImageMagick.
+
+    convert image.png -threshold 50% png32:final.png
+
+Threshold and create a mask file (see below) with small gaps between lines filled in.
+
+    convert image.png -threshold 50% -morphology Open Square:1 png32:final.png
 
 
+##### Using mask files
 
-### Integration with Tabula
+Mask files are useful if the preprocessing to sharpen the borders around fields or otherwise enhance your image degrades the text quality.  In this case you can use one image with clean text to extract from, and one mask file with cleaner bounding boxes.  
+
+For example, on Unix/Linux, ImageMagick can fill in small gaps between lines in the bounding boxes, but the process will make the text less readible.  Example script for filling in small gaps.
+
+The `-M` or `--mask` parameter should be the path to an arbitrarily-named mask file, or a directory of mask files with one mask image for each input image (for multiple masks, the file name of the mask and the input file should be the same).
+
+    datapiece -i pngs/contract_4.png -b boxes_contract.csv -o out/ -M masks/contract_4.png
+
+
+### Integration with [Tabula](https://github.com/tabulapdf/tabula)
 
 Tabula's JSON bounding box output can be used as an unofficial front-end.  Go to Advanced Options, JSON output, and save your fields
 
@@ -68,16 +114,17 @@ Tabula's JSON bounding box output can be used as an unofficial front-end.  Go to
 ```
 
 Datapiece 0.1
-
 Usage: datapiece [options]
 
   -b <value> | --boxes <value>
-        JSON or CSV bounding boxes file. Use for multiple boxes per image. Format: [{"name": "field_name", "x1":10, "y1":10, "x2": 20, "y2": 30},... ] 
- or field_name,10,10,20,30...
+        JSON or CSV bounding boxes file. Use for multiple boxes per image. Format: [{"name": "field_name", "x1":10, "y1":10, "x2": 20, "y2": 30, "exact": false},... ] 
+ or field_name,10,10,20,30,false...
   -i <value> | --infile <value>
-        Image input file.
+        Image input file or directory.
   -o <value> | --outfile <value>
-        Image output file.
+        Image output file or directory.  If input is a directory, output must be a directory.
+  -M <value> | --maskfile <value>
+        Mask to use to identify target areas. Output will still come from input file.
   -R <value> | --buffer <value>
         Buffer around the target boxes. Default: 10 pts (or pixels if bounding boxes are in pixels. See dpi and sourcedpi.) Should be large enough to account for shift, skew, enlargement of target boxes but small enough not to include other boxes on the page. Overlap with bounding boxes in the JSON is OK.
   -m <value> | --minblobsize <value>
@@ -94,24 +141,37 @@ Usage: datapiece [options]
         Filename for boxes found (JSON).  If used with --findonly flag, no images will be produced.
   -f | --findonly
         Find boxes only. Filename for JSON output required.
-
+  -q | --quiet
+        Quiet mode.
+  -h | --horizontal
+        Output with images laid out horizontally. Only applies when split (-S) is not used. Default is vertical.
+  -c <value> | --stretch <value>
+        Pixels of stretch to add to search area. Useful for eliminating large candidate areas caused by whitespace at the edges of search area.
 
 ```
+
+### Notes on coordinates
+
+*See here first if you have trouble.*
+
+Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of the upper left and lower right corners of the bounding box, not the upper left coordinate and the height/width.  Some graphics programs will give coordinates with height/width.  Also note the coordinates are in points for compatibility with Tabula and other PDF applications.  To get an input image for Datapiece you need to convert a PDF to PNG format *at a particular resolution*.  For OCR this generally needs to be pretty high like 300 dots per inch.  If you convert your PDF using 300 DPI, put 300 as the dpi parameter to Datapiece and everything should work out fine.  The numbers you get from Tabula or another PDF program from the original PDF will be translated to pixels in the .png file.  If you got your bounding boxes from the input PNG, just leave --dpi out.
+
+See boxes_contract.json and [Integration with Tabula](#integrating-with-tabula) for more information on generating bounding boxes.
 
 
 ### Contributing
 
-See Datapiece.scala for most of the code.  Recompile with:
+See Datapiece.scala to get started. Recompile with:
 
     sbt assembly
 
 Pull requests welcome.
 
 
-### Bugs, feature requests etc
+### Bugs, feature requests, updates
 
-Please submit bugs for feature requests to "Issues" above, or send me an email through my profile.  Updates on twitter @alexbyrnes.
+Please [submit bugs for feature requests](https://github.com/alexbyrnes/Datapiece/issues), or send me an email through my profile.  Updates on twitter [@alexbyrnes](https://twitter.com/alexbyrnes).
 
 ### License
 
-
+Datapiece is released under the [MIT License](http://www.opensource.org/licenses/MIT).
