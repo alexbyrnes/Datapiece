@@ -93,7 +93,7 @@ Include a JSON file with the coordinates of the fields found.
 
     datapiece -i pngs/contract2.png -b boxes_contract.csv --dpi 300 --jsonout out/contract2.json -o out/contract2_out.png
 
-Output series of images named out/contract2_<field>.png with --split.
+Output series of images named out/contract2_[field name].png with --split.
 
     datapiece -i pngs/contract2.png -b boxes_contract.json -o out/contract2_ --dpi 300 --split
 
