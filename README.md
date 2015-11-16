@@ -1,14 +1,18 @@
+## Datapiece
+
 Datapiece does high performance page segmentation for documents with tables, fill-in-the-blanks, or other small areas of interest across many files.  The output is the interest areas cropped exactly based on an estimated location.  This is primarily useful for large transcription efforts with Optical Character Recognition (OCR) but should help document processing for publication, storage, or to make reading the documents easier.
 
 Documents with data in them make OCR on whole pages difficult. Data tends to come in small strings of characters surrounded by lines and boxes.
 
 Differences between standard paragraph text and "data documents":
 
-"Data documents":
-     * Have little context to use for correction, values tend to be codes, dates, and numbers, or non-dictionary words such as first and last names.
-     * Have markup used to identify the data to the human eye that is difficult for OCR applications to distinguish from characters, and symbols.
-     * Come in large numbers: disclosure forms, tax documents, election results, and other institutional forms.
-     
+Data documents:
+
+* Have little context to use for correcting errors. Values tend to be codes, dates, and numbers, or non-dictionary words such as first and last names.
+* Have markup used to identify the data to the human eye that is difficult for OCR applications to distinguish from characters, and symbols.
+* Come in large numbers: disclosure forms, tax documents, election results, and other institutional forms.
+
+
 *Page segmentation is part of the preprocessing done by OCR programs to divide a printed page into paragraphs, headers, sidebars or other blocks of text.
 
 ## Installation
@@ -56,7 +60,7 @@ After processing:
 
 ### Examples using [FCC Political Files](https://stations.fcc.gov/)
 
-("datapiece" refers to the one-line script in the root directory.  `java -jar datapiece.jar` is equivalent.)
+(`datapiece` refers to the one-line script in the root directory.  `java -jar datapiece.jar` is equivalent.)
 
 Output single vertically-arranged image.
 
@@ -73,6 +77,8 @@ Output series of images named out/contract2_<field>.png with --split.
 Process whole directory.
 
     datapiece -i pngs/ -b boxes_contract.json -o out/ --dpi 300
+    
+[Example script](https://github.com/alexbyrnes/Datapiece/blob/master/run-examples.sh)
 
 #### Extracting from PDFs
 
@@ -90,8 +96,9 @@ Threshold the PNG using ImageMagick.
 
 Threshold and create a mask file (see below) with small gaps between lines filled in.
 
-    convert image.png -threshold 50% -morphology Open Square:1 png32:final.png
+    convert image.png -threshold 50% -morphology Open Square:1 png32:final_mask.png
 
+The result final.png and final_mask.png are appropriate for input to datapiece. Note `-r300` is the resolution.  A higher resolution will produce a larger and more detailed image.  *The 300 from this command should go in the --dpi parameter in datapiece.*
 
 ##### Using mask files
 
@@ -154,9 +161,11 @@ Usage: datapiece [options]
 
 *See here first if you have trouble.*
 
-Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of the upper left and lower right corners of the bounding box, not the upper left coordinate and the height/width.  Some graphics programs will give coordinates with height/width.  Also note the coordinates are in points for compatibility with Tabula and other PDF applications.  To get an input image for Datapiece you need to convert a PDF to PNG format *at a particular resolution*.  For OCR this generally needs to be pretty high like 300 dots per inch.  If you convert your PDF using 300 DPI, put 300 as the dpi parameter to Datapiece and everything should work out fine.  The numbers you get from Tabula or another PDF program from the original PDF will be translated to pixels in the .png file.  If you got your bounding boxes from the input PNG, just leave --dpi out.
+Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of the upper left and lower right corners of the bounding box, *not the upper left coordinate and the height/width*.  Also note the coordinates are in [points](https://en.wikipedia.org/wiki/Point_(typography)) for compatibility with Tabula and other PDF applications.  To get an input image for Datapiece you need to [convert a PDF to PNG format](#extracting-from-pdfs) *at a particular resolution*.  For OCR this generally needs to be very high like 300 dots-per-inch and above.  If you convert your PDF using 300 DPI, put 300 as the dpi parameter to Datapiece and everything should work out fine.  The numbers you get from Tabula or another PDF program from the original PDF will be translated to pixels in the .png file.  If you got your bounding boxes from the input PNG, just leave --dpi out.
 
-See boxes_contract.json and [Integration with Tabula](#integrating-with-tabula) for more information on generating bounding boxes.
+In some circumstances, the DPI of the source PDF will be something other than 72.  In these (rare) instances, use both the --dpi parameter for the resolution you extracted at, and --sourcedpi for the DPI of the original PDF.  Most of the time --dpi is the only parameter used.
+
+See [boxes_contract.json](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json), [boxes_contract.csv](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.csv) and [Integration with Tabula](#integrating-with-tabula) for more information on generating bounding boxes.
 
 
 ### Contributing
