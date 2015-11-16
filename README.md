@@ -23,6 +23,12 @@ Data documents:
 
      Java 1.7+
 
+Download a pre-built jar file, or rebuild the archive with `sbt assembly`.  Install according to your preference and OS conventions.  The simplest way to get started with input files in place and commands ready is to clone the repo.
+
+    git clone https://github.com/alexbyrnes/Datapiece.git
+    cd Datapiece
+    ./run-examples.sh
+
 ### Usage
 
 Prepare a JSON or CSV file with a bounding box for each field you're interested in extracting.  Each "box" should have a name, coordinates of the upper left and lower right corners of the box and optionally "exact" equal to true or false.  `"exact": true` tells datapiece to skip any search to find the exact area to crop and just use the exact coordinates given.  This is used with very predictable forms, or areas that don't have lines around them (see the [advertiser_address](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json) field from the examples.  JSON can be produced from [Tabula](#integration-with-tabula).  Both formats can be written from GIMP, Photoshop, Adobe Reader, etc.  
