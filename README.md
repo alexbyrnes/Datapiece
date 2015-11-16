@@ -4,13 +4,16 @@ Datapiece does high performance page segmentation for documents with tables, fil
 
 Documents with data in them make OCR on whole pages difficult. Data tends to come in small strings of characters surrounded by lines and boxes.
 
-Differences between standard paragraph text and "data documents":
+
+## Motivation
+
+There are significant differences between documents where the area of interest is paragraph text, and "data documents."
 
 Data documents:
 
-* Have little context to use for correcting errors. Values tend to be codes, dates, and numbers, or non-dictionary words such as first and last names.
-* Have markup used to identify the data to the human eye that is difficult for OCR applications to distinguish from characters, and symbols.
-* Come in large numbers: disclosure forms, tax documents, election results, and other institutional forms.
+* Have little context to use for correcting errors. Values are usually to be codes, dates, and numbers, or non-dictionary words such as first and last names.
+* Have markup used to identify the data to the human eye that is difficult for OCR applications to distinguish from characters and symbols.
+* Come in large numbers: disclosure forms, [tax documents](https://archive.org/details/IRS990), election results, and other institutional forms.
 
 
 *Page segmentation is part of the preprocessing done by OCR programs to divide a printed page into paragraphs, headers, sidebars, or other blocks of text.
@@ -54,12 +57,18 @@ Each JSON object or CSV row corresponds to the outline of a field taken from a r
 
 ### Example document
 
-![example output](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/contract2_in.png)
+---
+
+
+![example input](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/contract2_in.png)
+
+---
 
 ### After processing
+---
 
 ![example output](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/contract2.png)
-
+---
 
 ### Examples using [FCC Political Files](https://stations.fcc.gov/)
 
@@ -81,7 +90,7 @@ Process whole directory.
 
     datapiece -i pngs/ -b boxes_contract.json -o out/ --dpi 300
     
-[Example script](https://github.com/alexbyrnes/Datapiece/blob/master/run-examples.sh)
+Sample script: [run-examples.sh](https://github.com/alexbyrnes/Datapiece/blob/master/run-examples.sh)
 
 #### Extracting from PDFs
 
