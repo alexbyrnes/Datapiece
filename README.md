@@ -16,8 +16,6 @@ Data documents:
 * Come in large numbers: disclosure forms, [tax documents](https://archive.org/details/IRS990), election results, and other institutional forms.
 
 
-*Page segmentation is part of the preprocessing done by OCR programs to divide a printed page into paragraphs, headers, sidebars, or other blocks of text.
-
 
 ## Installation
 
@@ -27,7 +25,7 @@ Data documents:
 
 ### Usage
 
-Prepare a JSON or CSV file with a bounding box for each field you're interested in extracting.  Each "box" should have a name, coordinates of the upper left and lower right corners of the box and optionally "exact" equal to true or false.  `"exact": true` tells datapiece to skip any search to find the exact area to crop and just use the exact coordinates given.  This is used with very predictable forms, or areas that don't have lines around them (see the [advertiser_address](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json) field from the examples.  JSON can be produced from [Tabula](integration-with-tabula).  Both formats can be written from GIMP, Photoshop, Adobe Reader, etc.  
+Prepare a JSON or CSV file with a bounding box for each field you're interested in extracting.  Each "box" should have a name, coordinates of the upper left and lower right corners of the box and optionally "exact" equal to true or false.  `"exact": true` tells datapiece to skip any search to find the exact area to crop and just use the exact coordinates given.  This is used with very predictable forms, or areas that don't have lines around them (see the [advertiser_address](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json) field from the examples.  JSON can be produced from [Tabula](#integration-with-tabula).  Both formats can be written from GIMP, Photoshop, Adobe Reader, etc.  
 
 See [Notes on coordinates](#notes-on-coordinates) for details on how to write coordinates in points at a particular resolution, or pixels. 
 
@@ -170,8 +168,6 @@ Usage: datapiece [options]
 ```
 
 ### Notes on coordinates
-
-*See here first if you have trouble.*
 
 Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of the upper left and lower right corners of the bounding box, *not the upper left coordinate and the height/width*.  Also note the coordinates are in [points](https://en.wikipedia.org/wiki/Point_(typography)) for compatibility with Tabula and other PDF applications.  To get an input image for Datapiece you need to [convert a PDF to PNG format](#extracting-from-pdfs) *at a particular resolution*.  For OCR this generally needs to be very high like 300 dots-per-inch and above.  If you convert your PDF using 300 DPI, put 300 as the dpi parameter to Datapiece and everything should work out fine.  The numbers you get from Tabula or another PDF program from the original PDF will be translated to pixels in the .png file.  If you got your bounding boxes from the input PNG, just leave --dpi out.
 
