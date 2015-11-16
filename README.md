@@ -13,7 +13,10 @@ Data documents:
 * Come in large numbers: disclosure forms, tax documents, election results, and other institutional forms.
 
 
-*Page segmentation is part of the preprocessing done by OCR programs to divide a printed page into paragraphs, headers, sidebars or other blocks of text.
+*Page segmentation is part of the preprocessing done by OCR programs to divide a printed page into paragraphs, headers, sidebars, or other blocks of text.
+
+![explainer](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/explainer.png)
+
 
 ## Installation
 
@@ -23,7 +26,7 @@ Data documents:
 
 ### Usage
 
-Prepare a JSON or CSV file with a bounding box for each field you're interested in extracting.  Each "box" should have a name, coordinates of the upper left and lower right corners of the box and optionally "exact" equal to true or false.  `"exact": true` tells datapiece to skip any search to find the exact area to crop and just use the exact coordinates given.  This is used with very predictable forms, or areas that don't have lines around them (see the [advertiser_address](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json) field from the examples.  JSON can be produced from [Tabula](integration-with-tabula).  Both formats can be written from GIMP, Photoshop, Adobe Reader etc.  
+Prepare a JSON or CSV file with a bounding box for each field you're interested in extracting.  Each "box" should have a name, coordinates of the upper left and lower right corners of the box and optionally "exact" equal to true or false.  `"exact": true` tells datapiece to skip any search to find the exact area to crop and just use the exact coordinates given.  This is used with very predictable forms, or areas that don't have lines around them (see the [advertiser_address](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json) field from the examples.  JSON can be produced from [Tabula](integration-with-tabula).  Both formats can be written from GIMP, Photoshop, Adobe Reader, etc.  
 
 See [Notes on coordinates](#notes-on-coordinates) for details on how to write coordinates in points at a particular resolution, or pixels. 
 
@@ -48,10 +51,8 @@ billing_calendar, 455, 154, 534, 179, false
 
 Each JSON object or CSV row corresponds to the outline of a field taken from a representative document with with point (x1, y1) at the top left corner, and (x2, y2) at the bottom right.  This is an approximate guess at the size, and location of the same field in other documents.  Datapiece will take this information for many fields and many PNG images and output the fields as separate images or one horizontally or vertically aligned image.
 
-![explainer](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/explainer.png)
 
-
-[Example input document](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/pngs/contract2.png)
+![example output](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/documentation/contract2_in.png)
 
 After processing:
 
@@ -98,7 +99,7 @@ Threshold and create a mask file (see below) with small gaps between lines fille
 
     convert image.png -threshold 50% -morphology Open Square:1 png32:final_mask.png
 
-The result final.png and final_mask.png are appropriate for input to datapiece. Note `-r300` is the resolution.  A higher resolution will produce a larger and more detailed image.  *The 300 from this command should go in the --dpi parameter in datapiece.*
+The result final.png and final_mask.png are appropriate for input to datapiece. Note `-r300` is the resolution.  A higher resolution will produce a larger and more detailed image.  *The 300 from this command should go in the dpi parameter in datapiece.*
 
 ##### Using mask files
 
