@@ -173,7 +173,7 @@ Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of
 
 In some circumstances, the DPI of the source PDF will be something other than 72.  In these (rare) instances, use both the --dpi parameter for the resolution you extracted at, and --sourcedpi for the DPI of the original PDF.  Most of the time --dpi is the only parameter used.
 
-See [boxes_contract.json](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json), [boxes_contract.csv](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.csv) and [Integration with Tabula](#integrating-with-tabula) for more information on generating bounding boxes.
+See [boxes_contract.json](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json), [boxes_contract.csv](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.csv) and [Integration with Tabula](#integration-with-tabula) for more information on generating bounding boxes.
 
 
 ### Contributing
