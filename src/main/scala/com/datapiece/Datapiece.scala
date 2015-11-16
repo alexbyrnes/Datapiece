@@ -44,13 +44,17 @@ object Datapiece {
     val futureList = Future.traverse(files)(infile ⇒
       Future {
 
-        if (!config.quiet) {
-          println("Processing: " + infile.path)
-        }
+        if (!config.quiet) println("Processing: " + infile.path)
 
         val infilePath = config.maskfile match {
           case "" => infile.path.toString
-          case mask => File(mask).path.toString
+          case mask => {
+            val maskFile = File(mask)
+            if (maskFile.isDirectory)
+              maskFile.path.toString + "/" + infile.name
+            else
+              maskFile.path.toString
+          }
         }
 
         var bufferedImage = getImage(infilePath)
@@ -219,7 +223,9 @@ object Datapiece {
 
   def writeWholeImageHorizontal(bufferedImage: BufferedImage, cropped: List[Box], outfile: String) {
 
-    val totalWidth = cropped.map((b: Box) => b.x2 - b.x1).sum
+    val border = 5
+
+    val totalWidth = cropped.map((b: Box) => (b.x2 - b.x1) + border).sum
     val maxHeight = cropped.map((b: Box) => b.y2 - b.y1).reduce(Math.max)
 
     val combined = new BufferedImage(totalWidth, maxHeight, BufferedImage.TYPE_INT_RGB)
@@ -232,7 +238,7 @@ object Datapiece {
       var si = bufferedImage.getSubimage(c.x1, c.y1, c.x2 - c.x1, c.y2 - c.y1)
       g.drawImage(si, cursor, 0, null)
 
-      cursor += c.x2 - c.x1
+      cursor += (c.x2 - c.x1) + border
     }
 
     ImageIO.write(combined, "PNG", new JFile(outfile))
@@ -241,7 +247,9 @@ object Datapiece {
 
   def writeWholeImageVertical(bufferedImage: BufferedImage, cropped: List[Box], outfile: String) {
 
-    val totalHeight = cropped.map((b: Box) => b.y2 - b.y1).sum
+    val border = 5
+
+    val totalHeight = cropped.map((b: Box) => (b.y2 - b.y1) + border).sum
     val maxWidth = cropped.map((b: Box) => b.x2 - b.x1).reduce(Math.max)
 
     val combined = new BufferedImage(maxWidth, totalHeight, BufferedImage.TYPE_INT_RGB)
@@ -257,7 +265,7 @@ object Datapiece {
       var si = bufferedImage.getSubimage(c.x1, c.y1, c.x2 - c.x1, c.y2 - c.y1)
       g.drawImage(si, 0, cursor, null)
 
-      cursor += c.y2 - c.y1
+      cursor += (c.y2 - c.y1) + border
     }
 
     ImageIO.write(combined, "PNG", new JFile(outfile))
