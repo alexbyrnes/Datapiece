@@ -75,6 +75,8 @@ Output series of images named out/contract2_<field>.png with --split.
 Process whole directory.
 
     datapiece -i pngs/ -b boxes_contract.json -o out/ --dpi 300
+    
+[Example script](https://github.com/alexbyrnes/Datapiece/blob/master/run-examples.sh)
 
 #### Extracting from PDFs
 
@@ -92,8 +94,9 @@ Threshold the PNG using ImageMagick.
 
 Threshold and create a mask file (see below) with small gaps between lines filled in.
 
-    convert image.png -threshold 50% -morphology Open Square:1 png32:final.png
+    convert image.png -threshold 50% -morphology Open Square:1 png32:final_mask.png
 
+The result final.png and final_mask.png are appropriate for input to datapiece. Note `-r300` is the resolution.  A higher resolution will produce a larger and more detailed image.  *The 300 from this command should go in the --dpi parameter in datapiece.*
 
 ##### Using mask files
 
@@ -158,7 +161,7 @@ Usage: datapiece [options]
 
 Coordinates are given as x1/y1 and x2/y2.  These are the absolute coordinates of the upper left and lower right corners of the bounding box, not the upper left coordinate and the height/width.  Some graphics programs will give coordinates with height/width.  Also note the coordinates are in points for compatibility with Tabula and other PDF applications.  To get an input image for Datapiece you need to convert a PDF to PNG format *at a particular resolution*.  For OCR this generally needs to be pretty high like 300 dots per inch.  If you convert your PDF using 300 DPI, put 300 as the dpi parameter to Datapiece and everything should work out fine.  The numbers you get from Tabula or another PDF program from the original PDF will be translated to pixels in the .png file.  If you got your bounding boxes from the input PNG, just leave --dpi out.
 
-See boxes_contract.json and [Integration with Tabula](#integrating-with-tabula) for more information on generating bounding boxes.
+See [boxes_contract.json](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json), [boxes_contract.csv](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.csv) and [Integration with Tabula](#integrating-with-tabula) for more information on generating bounding boxes.
 
 
 ### Contributing
