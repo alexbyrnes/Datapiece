@@ -11,7 +11,7 @@ There are significant differences between documents where the area of interest i
 
 Data documents:
 
-* Have little context to use for correcting errors. Values are usually to be codes, dates, and numbers, or non-dictionary words such as first and last names.
+* Have little context to use for correcting errors. Values are usually codes, dates, and numbers, or non-dictionary words such as first and last names.
 * Have markup used to identify the data to the human eye that is difficult for OCR applications to distinguish from characters and symbols.
 * Come in large numbers: disclosure forms, [tax documents](https://archive.org/details/IRS990), election results, and other institutional forms.
 
@@ -32,7 +32,7 @@ Download a pre-built jar file, or rebuild the archive with `sbt assembly`.  Inst
 You should see images like the following in the out directory.
 
 ---
-![contract dates](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/out/contract2_contract_dates.png)
+![contract dates](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/out/contract2_advertiser.png)
 ---
 
 ### Usage
