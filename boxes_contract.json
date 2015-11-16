@@ -6,7 +6,7 @@
  {"name": "product", "x1": 304, "y1": 80, "x2": 593, "y2": 105},
  {"name": "advertiser", "x1": 304, "y1": 130, "x2": 479, "y2": 155},
  {"name": "contract_revision", "x1": 403, "y1": 52, "x2": 493, "y2": 80},
- {"name": "special_handling", "x1": 403, "y1": 204, "x2": 591, "y2": 229},
+ {"name": "special_handling", "x1": 403, "y1": 200, "x2": 591, "y2": 229},
  {"name": "advertiser_code", "x1": 455, "y1": 279, "x2": 533, "y2": 303},
  {"name": "alt_order_no", "x1": 493, "y1": 52, "x2": 592, "y2": 80},
  {"name": "estimate_no", "x1": 403, "y1": 105, "x2": 492, "y2": 130},

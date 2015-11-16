@@ -6,7 +6,7 @@ demographic,403,229,591,254,false
 product,304,80,593,105,false
 advertiser,304,130,479,155,false
 contract_revision,403,52,498,80,false
-special_handling,403,204,591,229,false
+special_handling,403,200,591,229,false
 advertiser_code,455,279,533,303,false
 alt_order_no,493,52,592,80,false
 estimate_no,403,105,492,130,false
