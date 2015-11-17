@@ -23,21 +23,26 @@ Data documents:
 
      Java 1.7+
 
-Download a pre-built jar file, or rebuild the archive with `sbt assembly`.  Install according to your preference and OS conventions.  The simplest way to get started with input files in place and commands ready is to clone the repo.
+Download a [pre-built jar file](https://github.com/alexbyrnes/Datapiece/blob/master/datapiece.jar?raw=true), or rebuild the archive with [SBT](http://www.scala-sbt.org/release/tutorial/index.html) using `sbt assembly`.  Install according to your preference and OS conventions.  
+
+However, the simplest way to get started with input files in place and commands ready is to clone the repo and run the examples:
 
     git clone https://github.com/alexbyrnes/Datapiece.git
     cd Datapiece
     ./run-examples.sh
     
-You should see images like the following in the out directory:
+You should see images like the following in the "out" directory:
 
 
 ![contract dates](https://raw.githubusercontent.com/alexbyrnes/Datapiece/master/out/contract2_advertiser.png)
 ---
 
+
 ### Usage
 
-Prepare a JSON or CSV file with a bounding box for each field you're interested in extracting.  Each "box" should have a name, coordinates of the upper left and lower right corners of the box and optionally "exact" equal to true or false.  `"exact": true` tells datapiece to skip any search to find the exact area to crop and just use the exact coordinates given.  This is used with very predictable forms, or areas that don't have lines around them (see the [advertiser_address](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json) field from the examples.  JSON can be produced from [Tabula](#integration-with-tabula).  Both formats can be written from GIMP, Photoshop, Adobe Reader, etc.  
+Prepare a JSON or CSV file with a bounding box for each field you're interested in extracting.  Each "box" should have a name, coordinates of the upper left and lower right corners of the box, and, optionally, "exact" equal to true or false.  `"exact": true` tells datapiece to skip any search to find the exact area to crop and just use the exact coordinates given.  This is used with very predictable forms, or areas that don't have lines around them (see the [advertiser_address](https://github.com/alexbyrnes/Datapiece/blob/master/boxes_contract.json) field from the examples.  
+
+JSON can be produced using a user interface from [Tabula](#integration-with-tabula).  Both formats -- CSV or JSON -- can also be written by hand by selecting the area in a graphics program such as GIMP, Photoshop, or Adobe Reader.  Select the areas you want and copy the [upper left and lower right coordinates](#notes-on-coordinates) into the input file.  Measuring in points is easier because you can extract from a PDF at different resolutions and your box files stay the same.  Replace the datapiece [dpi parameter](#extracting-from-pdfs) with the extraction resolution.
 
 See [Notes on coordinates](#notes-on-coordinates) for details on how to write coordinates in points at a particular resolution, or pixels. 
 
@@ -125,13 +130,25 @@ The result final.png and final_mask.png are appropriate for input to datapiece. 
 
 ##### Using mask files
 
-Mask files are useful if the preprocessing to sharpen the borders around fields or otherwise enhance your image degrades the text quality.  In this case you can use one image with clean text to extract from, and one mask file with cleaner bounding boxes.  
+Mask files are useful if the preprocessing to sharpen the borders around fields or otherwise enhance your image degrades the text quality.  In this case you can use one image with clean text to extract from, and one mask file with better bounding boxes.  
 
 For example, on Unix/Linux, ImageMagick can fill in small gaps between lines in the bounding boxes, but the process will make the text less readible.  Example script for filling in small gaps.
 
-The `-M` or `--mask` parameter should be the path to an arbitrarily-named mask file, or a directory of mask files with one mask image for each input image (for multiple masks, the file name of the mask and the input file should be the same).
+The `-M` or `--mask` parameter should be the path to an arbitrarily-named mask file, or a directory of mask files with one mask image for each input image (in this case, the file name of the mask and the input file should be the same).  For instance, images a.png, b.png, c.png in one directotry should have masks in another directory called a.png, b.png, c.png.  
+
+
+Single mask
 
     datapiece -i pngs/contract_4.png -b boxes_contract.csv -o out/ -M masks/contract_4.png
+
+Multiple masks
+
+    datapiece -i pngs/ -b boxes_contract.csv -o out/ -M masks/
+    # Masks should have the same names as corresponding input images
+
+### Performance
+
+Datapiece uses Akka Futures to run multiple image files in parallel so no parallel processing layer is required.  Performance should be very fast: 200-300 files per minute for directory processing.  The Java Virtual Machine also optimizes as it runs so extracting one file at a time will give you slower overall performance, around 1-2 seconds per file.
 
 
 ### Integration with [Tabula](https://github.com/tabulapdf/tabula)
